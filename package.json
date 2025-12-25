@@ -1,0 +1,66 @@
+{
+  "name": "oxlint-plugin-complexity",
+  "version": "0.1.0",
+  "description": "Cyclomatic and cognitive complexity rules for oxlint",
+  "keywords": [
+    "oxlint",
+    "oxc",
+    "eslint",
+    "plugin",
+    "complexity",
+    "cyclomatic",
+    "cognitive",
+    "code-quality"
+  ],
+  "author": "itaymendel",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itaymendel/oxlint-plugin-complexity.git"
+  },
+  "bugs": {
+    "url": "https://github.com/itaymendel/oxlint-plugin-complexity/issues"
+  },
+  "homepage": "https://github.com/itaymendel/oxlint-plugin-complexity#readme",
+  "type": "module",
+  "imports": {
+    "#src/*": "./src/*"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "pnpm run build && oxlint src/",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepublishOnly": "pnpm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "estree-walker": "^3.0.3",
+    "oxc-parser": "^0.105.0",
+    "oxlint": "^1.35.0",
+    "prettier": "3.7.4",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.0"
+  },
+  "peerDependencies": {
+    "oxlint": ">=1.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@10.12.4"
+}

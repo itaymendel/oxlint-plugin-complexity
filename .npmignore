@@ -1,0 +1,21 @@
+# Source files (dist is published)
+src/
+specs.md
+
+# Config files
+tsconfig.json
+vitest.config.ts
+.oxlintrc.json
+
+# Tests
+**/*.test.ts
+coverage/
+
+# IDE
+.idea/
+.vscode/
+
+# Git
+.git/
+.gitignore
+

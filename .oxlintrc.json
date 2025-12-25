@@ -1,0 +1,54 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+
+  "jsPlugins": ["./dist/index.js"],
+
+  "plugins": ["typescript", "unicorn", "import", "promise"],
+
+  "env": {
+    "node": true,
+    "es2024": true
+  },
+
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+
+  "rules": {
+    "complexity/max-cyclomatic": ["warn", { "max": 10 }],
+    "complexity/max-cognitive": ["warn", { "max": 15 }],
+
+    "no-console": "warn",
+    "no-debugger": "error",
+    "no-var": "error",
+    "prefer-const": "warn",
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "eqeqeq": ["error", "always"],
+
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-non-null-assertion": "warn",
+    "typescript/prefer-as-const": "error",
+    "typescript/no-this-alias": "warn",
+    "typescript/no-useless-empty-export": "warn",
+
+    "unicorn/no-useless-spread": "warn",
+    "unicorn/prefer-array-find": "warn",
+    "unicorn/prefer-array-flat-map": "warn",
+    "unicorn/prefer-set-size": "warn",
+    "unicorn/prefer-string-starts-ends-with": "warn",
+    "unicorn/no-unnecessary-await": "warn",
+    "unicorn/no-useless-fallback-in-spread": "warn",
+
+    "import/no-cycle": "error",
+    "import/default": "error",
+    "import/namespace": "error",
+
+    "promise/no-callback-in-promise": "warn",
+    "promise/no-new-statics": "error",
+    "promise/valid-params": "error"
+  },
+
+  "ignorePatterns": ["dist/", "node_modules/", "coverage/", "*.config.js", "*.config.ts"]
+}
