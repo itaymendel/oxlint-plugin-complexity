@@ -8,7 +8,6 @@ Cyclomatic and cognitive complexity rules for [oxlint](https://oxc.rs/docs/guide
 - Actionable error messages with complexity breakdown.
 - [Programmatic API](./src/index.ts) for custom tooling
 - Supports `.js` `.mjs` `.cjs` `.ts` `.tsx` `.jsx` `.vue` (extracts `<script>` blocks only)
-- React component exclusion
 
 ## Quick Start
 
