@@ -1,11 +1,11 @@
-name: CI
+name: Release
 
 on:
-  pull_request:
+  push:
     branches: [main]
 
 jobs:
-  ci:
+  release:
     runs-on: ubuntu-latest
 
     steps:
@@ -27,9 +27,6 @@ jobs:
       - name: Check formatting
         run: pnpm format:check
 
-      - name: Build
-        run: pnpm build
-
       - name: Check types
         run: pnpm exec tsc --noEmit
 
@@ -38,3 +35,13 @@ jobs:
 
       - name: Run tests
         run: pnpm test:run
+
+      - name: Build package
+        run: pnpm build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 30

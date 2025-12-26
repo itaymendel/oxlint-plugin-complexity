@@ -1,11 +1,12 @@
-name: CI
+name: Publish
 
 on:
-  pull_request:
-    branches: [main]
+  push:
+    tags:
+      - 'v*'
 
 jobs:
-  ci:
+  publish:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,15 +21,13 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Check formatting
         run: pnpm format:check
-
-      - name: Build
-        run: pnpm build
 
       - name: Check types
         run: pnpm exec tsc --noEmit
@@ -38,3 +37,11 @@ jobs:
 
       - name: Run tests
         run: pnpm test:run
+
+      - name: Build package
+        run: pnpm build
+
+      - name: Publish to npm
+        run: pnpm publish --no-git-checks --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
