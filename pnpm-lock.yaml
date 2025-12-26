@@ -9,11 +9,14 @@ importers:
   .:
     devDependencies:
       '@types/node':
-        specifier: ^22.0.0
+        specifier: ^22.19.3
         version: 22.19.3
       estree-walker:
         specifier: ^3.0.3
         version: 3.0.3
+      husky:
+        specifier: ^9.1.7
+        version: 9.1.7
       oxc-parser:
         specifier: ^0.105.0
         version: 0.105.0
@@ -24,10 +27,10 @@ importers:
         specifier: 3.7.4
         version: 3.7.4
       typescript:
-        specifier: ^5.7.0
+        specifier: ^5.9.3
         version: 5.9.3
       vitest:
-        specifier: ^4.0.0
+        specifier: ^4.0.16
         version: 4.0.16(@types/node@22.19.3)
 
 packages:
@@ -528,6 +531,11 @@ packages:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
+
+  husky@9.1.7:
+    resolution: {integrity: sha512-5gs5ytaNjBrh5Ow3zrvdUUY+0VxIuWVL4i9irt6friV+BqdCfmV11CQTWMiBYWHbXhco+J1kHfTOUkePhCDvMA==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
@@ -1046,6 +1054,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  husky@9.1.7: {}
 
   magic-string@0.30.21:
     dependencies:

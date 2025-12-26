@@ -1,0 +1,4 @@
+pnpm format:check
+pnpm exec tsc --noEmit
+pnpm exec oxlint src/
+pnpm test:run
