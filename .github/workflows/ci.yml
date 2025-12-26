@@ -36,7 +36,7 @@ jobs:
         run: pnpm exec tsc --noEmit
 
       - name: Lint
-        run: pnpm exec oxlint src/
+        run: pnpm run lint
 
       - name: Run tests
         run: pnpm test:run
