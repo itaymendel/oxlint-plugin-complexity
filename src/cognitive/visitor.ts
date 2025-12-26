@@ -175,7 +175,6 @@ export function createCognitiveVisitor(
   onComplexityCalculated: (result: ComplexityResult, node: ESTreeNode) => void
 ): Visitor {
   let globalFunctionNestingLevel = 0;
-  let lastExitedScope: CognitiveFunctionScope | undefined;
 
   const { context: visitorCtx, baseVisitor } = createComplexityVisitor<CognitiveFunctionScope>({
     createScope: (node, name) => ({
@@ -205,7 +204,6 @@ export function createCognitiveVisitor(
       if (scope.hasRecursiveCall) {
         scope.points.push(createComplexityPoint(node, 'recursion'));
       }
-      lastExitedScope = scope;
     },
 
     onComplexityCalculated(result, node) {
