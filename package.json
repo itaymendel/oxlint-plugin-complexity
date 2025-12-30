@@ -1,6 +1,6 @@
 {
   "name": "oxlint-plugin-complexity",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Cyclomatic and cognitive complexity rules for oxlint",
   "keywords": [
     "oxlint",
