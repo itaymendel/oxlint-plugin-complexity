@@ -168,3 +168,37 @@ export function summarizeComplexity(
 
   return ' [' + sorted.map(([cat, count]) => `${cat}: +${count}`).join(', ') + ']';
 }
+
+/**
+ * Format a detailed line-by-line breakdown of complexity points.
+ * Shows each contributor sorted by line number, with top offender(s) highlighted.
+ *
+ * @param points - Array of complexity points to format
+ * @returns Formatted breakdown string, or empty string if no points
+ */
+export function formatBreakdown(points: ComplexityPoint[]): string {
+  if (points.length === 0) return '';
+
+  const sorted = points.toSorted((a, b) => a.location.start.line - b.location.start.line);
+
+  const maxComplexity = Math.max(...sorted.map((p) => p.complexity));
+
+  const lines = sorted.map((point) => {
+    const line = point.location.start.line;
+
+    const constructMatch = point.message.match(/:\s*(.+)$/);
+    const construct = constructMatch ? constructMatch[1].trim() : 'unknown';
+
+    // Extract nesting info if present
+    const nestingMatch = point.message.match(/\(incl\.\s*(\d+)\s*for nesting\)/);
+    const nestingInfo = nestingMatch ? ` (incl. +${nestingMatch[1]} nesting)` : '';
+
+    const isTopOffender = point.complexity === maxComplexity;
+    const prefix = isTopOffender ? '>>>' : '   ';
+    const suffix = isTopOffender ? ' [top offender]' : '';
+
+    return `${prefix} Line ${line}: +${point.complexity} for '${construct}'${nestingInfo}${suffix}`;
+  });
+
+  return '\n\nBreakdown:\n' + lines.join('\n');
+}

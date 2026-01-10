@@ -8,7 +8,7 @@ import type {
   VisitorWithHooks,
   ESTreeNode,
 } from './types.js';
-import { getFunctionName, summarizeComplexity } from './utils.js';
+import { getFunctionName, summarizeComplexity, formatBreakdown } from './utils.js';
 import { createCyclomaticVisitor } from './cyclomatic.js';
 import { createCognitiveVisitor } from './cognitive/visitor.js';
 
@@ -68,10 +68,11 @@ function createComplexityRule(config: ComplexityRuleConfig): Rule {
             const funcNode = node as FunctionNode;
             const name = getFunctionName(funcNode, funcNode.parent);
             const summary = summarizeComplexity(result.points, config.normalizeCategory);
+            const breakdown = formatBreakdown(result.points);
 
             context.report({
               node,
-              message: `Function '${name}' has ${config.metricName} of ${result.total}. Maximum allowed is ${maxComplexity}.${summary}`,
+              message: `Function '${name}' has ${config.metricName} of ${result.total}. Maximum allowed is ${maxComplexity}.${summary}${breakdown}`,
             });
           }
         }),

@@ -28,22 +28,27 @@ npm install oxlint-plugin-complexity --save-dev
 
 ## Actionable Error Messages
 
-The following error message showcase what is actionable for the specific function by describing penalties.
+Error messages include a summary and detailed line-by-line breakdown with the top offender highlighted:
 
 ```
-complexity(max-cognitive): Function 'processData' has a Cognitive Complexity of 6.
-Refactor to reduce it to the 5 allowed. [if: +5, for...of: +1]
-                                         ^^^^^^^^^^^^^^^^^^^^
+complexity(max-cognitive): Function 'processData' has Cognitive Complexity of 6.
+Maximum allowed is 5. [if: +5, for...of: +1]
+
+Breakdown:
+    Line 2: +1 for 'for...of'
+    Line 4: +2 for 'if' (incl. +1 nesting)
+>>> Line 6: +3 for 'if' (incl. +2 nesting) [top offender]
 ```
 
 ```javascript
 function processData(items, mode) {
   for (const item of items) {
-    // +1
+    // Line 2: +1
     if (item.active) {
-      // +2 (nesting)
+      // Line 4: +2 (nesting)
       if (mode === 'strict') {
-      } // +3 (nesting)
+        // Line 6: +3 (nesting) <- top offender
+      }
     }
   }
 }
