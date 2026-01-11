@@ -129,9 +129,70 @@ export function summarizeComplexity(
   return ' [' + sorted.map(([cat, count]) => `${cat}: +${count}`).join(', ') + ']';
 }
 
-export function formatBreakdown(points: ComplexityPoint[]): string {
+const DEFAULT_NESTING_TIP_THRESHOLD = 3;
+const DEFAULT_ELSE_IF_CHAIN_THRESHOLD = 4;
+const DEFAULT_LOGICAL_OPERATOR_THRESHOLD = 3;
+
+const NESTING_TIP =
+  '    ↳ Tip: Extract inner loops into helper functions - each extraction removes one nesting level';
+
+export interface BreakdownOptions {
+  /** Minimum nesting level to show extraction tip (default: 3, set to 0 to disable) */
+  nestingTipThreshold?: number;
+  /** Minimum else-if count to show chain tip (default: 4, set to 0 to disable) */
+  elseIfChainThreshold?: number;
+  /** Minimum logical operator sequences to show tip (default: 3, set to 0 to disable) */
+  logicalOperatorThreshold?: number;
+}
+
+interface PatternCounts {
+  elseIfCount: number;
+  logicalOperatorCount: number;
+}
+
+function countPatterns(points: ComplexityPoint[]): PatternCounts {
+  let elseIfCount = 0;
+  let logicalOperatorCount = 0;
+
+  for (const point of points) {
+    const construct = point.message.match(/:\s*(.+)$/)?.[1]?.trim() ?? '';
+
+    if (construct === 'else if') {
+      elseIfCount++;
+    } else if (construct.startsWith('logical operator')) {
+      logicalOperatorCount++;
+    }
+  }
+
+  return { elseIfCount, logicalOperatorCount };
+}
+
+function generatePatternTips(counts: PatternCounts, options: BreakdownOptions): string[] {
+  const tips: string[] = [];
+
+  const elseIfThreshold = options.elseIfChainThreshold ?? DEFAULT_ELSE_IF_CHAIN_THRESHOLD;
+  const logicalThreshold = options.logicalOperatorThreshold ?? DEFAULT_LOGICAL_OPERATOR_THRESHOLD;
+
+  if (elseIfThreshold > 0 && counts.elseIfCount >= elseIfThreshold) {
+    tips.push(
+      `Long else-if chain (${counts.elseIfCount} branches). Consider using a lookup object or switch statement.`
+    );
+  }
+
+  if (logicalThreshold > 0 && counts.logicalOperatorCount >= logicalThreshold) {
+    tips.push(
+      `Complex boolean logic (${counts.logicalOperatorCount} operator sequences). Consider extracting into named boolean variables.`
+    );
+  }
+
+  return tips;
+}
+
+export function formatBreakdown(points: ComplexityPoint[], options?: BreakdownOptions): string {
   if (points.length === 0) return '';
 
+  const opts = options ?? {};
+  const nestingTipThreshold = opts.nestingTipThreshold ?? DEFAULT_NESTING_TIP_THRESHOLD;
   const sorted = points.toSorted((a, b) => a.location.start.line - b.location.start.line);
   const maxComplexity = Math.max(...sorted.map((p) => p.complexity));
 
@@ -140,15 +201,32 @@ export function formatBreakdown(points: ComplexityPoint[]): string {
     const construct = constructMatch ? constructMatch[1].trim() : 'unknown';
 
     const nestingMatch = point.message.match(/\(incl\.\s*(\d+)\s*for nesting\)/);
-    const nestingInfo = nestingMatch ? ` (incl. +${nestingMatch[1]} nesting)` : '';
+    const nestingLevel = nestingMatch ? parseInt(nestingMatch[1], 10) : 0;
+    const nestingInfo = nestingLevel > 0 ? ` (incl. +${nestingLevel} nesting)` : '';
 
     const isTopOffender = point.complexity === maxComplexity;
 
     const prefix = isTopOffender ? '>>>' : '   ';
     const suffix = isTopOffender ? ' [top offender]' : '';
 
-    return `${prefix} Line ${point.location.start.line}: +${point.complexity} for '${construct}'${nestingInfo}${suffix}`;
+    const line = `${prefix} Line ${point.location.start.line}: +${point.complexity} for '${construct}'${nestingInfo}${suffix}`;
+
+    if (isTopOffender && nestingTipThreshold > 0 && nestingLevel >= nestingTipThreshold) {
+      return `${line}\n${NESTING_TIP}`;
+    }
+
+    return line;
   });
 
-  return '\n\nBreakdown:\n' + lines.join('\n');
+  let result = '\n\nBreakdown:\n' + lines.join('\n');
+
+  // Add pattern-based tips at the end
+  const patternCounts = countPatterns(points);
+  const patternTips = generatePatternTips(patternCounts, opts);
+
+  if (patternTips.length > 0) {
+    result += '\n\nTips:\n' + patternTips.map((tip) => `  • ${tip}`).join('\n');
+  }
+
+  return result;
 }

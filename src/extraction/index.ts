@@ -1,16 +1,4 @@
 export * from './types.js';
-
-export { createVariableTracker } from './variable-tracker.js';
-export { findExtractionCandidates } from './boundary-detector.js';
-export { analyzeVariableFlow } from './flow-analyzer.js';
-export {
-  determineConfidence,
-  generateSignature,
-  detectIssues,
-  generateSuggestions,
-  createExtractionSuggestion,
-  getConfidenceLabel,
-} from './suggestion-generator.js';
 export { formatExtractionSuggestions } from './formatter.js';
 
 import type { ESTreeNode, ComplexityPoint } from '../types.js';

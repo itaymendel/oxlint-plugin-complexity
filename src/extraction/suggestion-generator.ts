@@ -12,7 +12,7 @@ const MAX_HIGH_CONFIDENCE_OUTPUTS = 1;
 const MAX_MEDIUM_CONFIDENCE_INPUTS = 5;
 const MAX_MEDIUM_CONFIDENCE_OUTPUTS = 2;
 
-export function determineConfidence(flow: VariableFlowAnalysis): ExtractionConfidence {
+function determineConfidence(flow: VariableFlowAnalysis): ExtractionConfidence {
   const inputCount = flow.inputs.length;
   const outputCount = flow.outputs.length;
   const hasMutations = flow.mutations.length > 0;
@@ -51,7 +51,7 @@ function suggestFunctionName(originalName: string, candidate: ExtractionCandidat
   return `processLines${candidate.startLine}To${candidate.endLine}`;
 }
 
-export function generateSignature(
+function generateSignature(
   functionName: string,
   inputs: TypedVariable[],
   outputs: TypedVariable[]
@@ -71,7 +71,7 @@ export function generateSignature(
   return `${functionName}(${params}): ${returnType}`;
 }
 
-export function detectIssues(
+function detectIssues(
   _candidate: ExtractionCandidate,
   flow: VariableFlowAnalysis
 ): ExtractionIssue[] {
@@ -119,7 +119,7 @@ export function detectIssues(
   return issues;
 }
 
-export function generateSuggestions(issues: ExtractionIssue[]): string[] {
+function generateSuggestions(issues: ExtractionIssue[]): string[] {
   const suggestions: string[] = [];
 
   for (const issue of issues) {

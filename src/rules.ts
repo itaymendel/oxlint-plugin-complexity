@@ -8,7 +8,12 @@ import type {
   VisitorWithHooks,
   ESTreeNode,
 } from './types.js';
-import { getFunctionName, summarizeComplexity, formatBreakdown } from './utils.js';
+import {
+  getFunctionName,
+  summarizeComplexity,
+  formatBreakdown,
+  type BreakdownOptions,
+} from './utils.js';
 import { createCyclomaticVisitor } from './cyclomatic.js';
 import {
   createCognitiveVisitorWithTracking,
@@ -152,6 +157,24 @@ export const maxCognitive: Rule = defineRule({
             description:
               'Enable smart extraction suggestions for complex functions (default: false)',
           },
+          nestingTipThreshold: {
+            type: 'integer',
+            minimum: 0,
+            description:
+              'Minimum nesting depth to show extraction tip on top offender (default: 3, set to 0 to disable)',
+          },
+          elseIfChainThreshold: {
+            type: 'integer',
+            minimum: 0,
+            description:
+              'Minimum else-if branches to show chain tip (default: 4, set to 0 to disable)',
+          },
+          logicalOperatorThreshold: {
+            type: 'integer',
+            minimum: 0,
+            description:
+              'Minimum logical operator sequences to show tip (default: 3, set to 0 to disable)',
+          },
         },
         additionalProperties: false,
       },
@@ -163,6 +186,7 @@ export const maxCognitive: Rule = defineRule({
     let maxComplexity = DEFAULT_MAX;
     let enableExtraction = false;
     let extractionOptions: ExtractionOptions | undefined;
+    let breakdownOptions: BreakdownOptions | undefined;
 
     return {
       before() {
@@ -171,6 +195,9 @@ export const maxCognitive: Rule = defineRule({
           enableExtraction?: boolean;
           extractionMultiplier?: number;
           minExtractionPercentage?: number;
+          nestingTipThreshold?: number;
+          elseIfChainThreshold?: number;
+          logicalOperatorThreshold?: number;
         };
         maxComplexity = options.max ?? DEFAULT_MAX;
         enableExtraction = options.enableExtraction ?? false;
@@ -185,6 +212,19 @@ export const maxCognitive: Rule = defineRule({
             minComplexityPercentage: options.minExtractionPercentage,
           };
         }
+
+        // Build breakdown options if any tip thresholds are specified
+        if (
+          options.nestingTipThreshold !== undefined ||
+          options.elseIfChainThreshold !== undefined ||
+          options.logicalOperatorThreshold !== undefined
+        ) {
+          breakdownOptions = {
+            nestingTipThreshold: options.nestingTipThreshold,
+            elseIfChainThreshold: options.elseIfChainThreshold,
+            logicalOperatorThreshold: options.logicalOperatorThreshold,
+          };
+        }
       },
 
       ...createCognitiveVisitorWithTracking(
@@ -192,7 +232,7 @@ export const maxCognitive: Rule = defineRule({
         (result: ComplexityResultWithVariables, node: ESTreeNode) => {
           if (result.total > maxComplexity) {
             const summary = summarizeComplexity(result.points, normalizeCognitiveCategory);
-            const breakdown = formatBreakdown(result.points);
+            const breakdown = formatBreakdown(result.points, breakdownOptions);
 
             // Add extraction suggestions if enabled and complexity is significant (default: >150% of max)
             let extractionOutput = '';

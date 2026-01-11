@@ -34,7 +34,7 @@ interface UpdateExpressionNode {
 }
 
 // eslint-disable-next-line complexity/max-cyclomatic -- AST node type switch
-export function isReadReference(node: ESTreeNode): boolean {
+function isReadReference(node: ESTreeNode): boolean {
   const parent = node.parent;
   if (!parent) return true;
 
@@ -78,7 +78,7 @@ export function isReadReference(node: ESTreeNode): boolean {
   }
 }
 
-export function isWriteReference(node: ESTreeNode): boolean {
+function isWriteReference(node: ESTreeNode): boolean {
   const parent = node.parent;
   if (!parent) return false;
 

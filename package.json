@@ -50,7 +50,6 @@
   },
   "devDependencies": {
     "@types/node": "^22.19.3",
-    "estree-walker": "^3.0.3",
     "husky": "^9.1.7",
     "oxc-parser": "^0.107.0",
     "oxlint": "^1.35.0",

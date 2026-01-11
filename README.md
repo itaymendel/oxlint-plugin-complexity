@@ -28,26 +28,35 @@ npm install oxlint-plugin-complexity --save-dev
 
 ## Actionable Error Messages
 
-Error messages include a summary and detailed line-by-line breakdown with the top offender highlighted:
+Error messages include a summary and detailed line-by-line breakdown with the top offender highlighted. When deep nesting is detected, a refactoring tip is shown:
 
 ```
-complexity(max-cognitive): Function 'processData' has Cognitive Complexity of 6.
-Maximum allowed is 5. [if: +5, for...of: +1]
+complexity(max-cognitive): Function 'processData' has Cognitive Complexity of 15.
+Maximum allowed is 10. [if: +14, for: +1]
 
 Breakdown:
-    Line 2: +1 for 'for...of'
-    Line 4: +2 for 'if' (incl. +1 nesting)
->>> Line 6: +3 for 'if' (incl. +2 nesting) [top offender]
+   Line 2: +1 for 'for'
+   Line 3: +2 for 'if' (incl. +1 nesting)
+   Line 4: +3 for 'if' (incl. +2 nesting)
+   Line 5: +4 for 'if' (incl. +3 nesting)
+>>> Line 6: +5 for 'if' (incl. +4 nesting) [top offender]
+    ↳ Tip: Extract inner loops into helper functions - each extraction removes one nesting level
 ```
 
 ```javascript
-function processData(items, mode) {
+function processData(items, mode, config) {
   for (const item of items) {
     // Line 2: +1
     if (item.active) {
-      // Line 4: +2 (nesting)
+      // Line 3: +2 (nesting=1)
       if (mode === 'strict') {
-        // Line 6: +3 (nesting) <- top offender
+        // Line 4: +3 (nesting=2)
+        if (config.validate) {
+          // Line 5: +4 (nesting=3)
+          if (item.required) {
+            // Line 6: +5 (nesting=4) <- top offender
+          }
+        }
       }
     }
   }
@@ -68,6 +77,46 @@ Enforces maximum [cognitive complexity](https://www.sonarsource.com/resources/co
 
 - **+1 for:** `if`/`for`/`while`/`switch`/`catch`/`? :` (+nesting), `else`, logical sequence changes, nested functions, recursion
 - **Excluded:** React components (PascalCase + returns JSX), default value patterns (`a || []`)
+
+#### Refactoring Tips
+
+The plugin detects common complexity patterns and provides actionable tips:
+
+| Tip                   | Trigger                       | Suggestion                                |
+| --------------------- | ----------------------------- | ----------------------------------------- |
+| **Nesting**           | Top offender has nesting >= 3 | Extract inner loops into helper functions |
+| **Else-if chain**     | 4+ else-if branches           | Use a lookup object or switch statement   |
+| **Logical operators** | 3+ operator sequences         | Extract into named boolean variables      |
+
+**Example output:**
+
+```
+Breakdown:
+   Line 2: +1 for 'if'
+   Line 4: +1 for 'else if'
+   Line 6: +1 for 'else if'
+   Line 8: +1 for 'else if'
+>>> Line 10: +1 for 'else if' [top offender]
+
+Tips:
+  • Long else-if chain (4 branches). Consider using a lookup object or switch statement.
+```
+
+**Configuration:** All thresholds are configurable (set to `0` to disable):
+
+```json
+{
+  "complexity/max-cognitive": [
+    "error",
+    {
+      "max": 15,
+      "nestingTipThreshold": 3,
+      "elseIfChainThreshold": 4,
+      "logicalOperatorThreshold": 3
+    }
+  ]
+}
+```
 
 #### Extraction Suggestions (Experimental)
 
