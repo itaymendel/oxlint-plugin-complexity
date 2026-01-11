@@ -11,7 +11,7 @@ export type FileType = (typeof FILE_TYPES)[number];
  */
 export function getParseFilename(fixture: { fileType: string; scriptLang?: string }): string {
   if (fixture.fileType === 'vue') {
-    return fixture.scriptLang === 'ts' ? 'test.ts' : 'test.js';
+    return `test.${fixture.scriptLang ?? 'js'}`;
   }
   return `test.${fixture.fileType}`;
 }

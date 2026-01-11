@@ -69,6 +69,54 @@ Enforces maximum [cognitive complexity](https://www.sonarsource.com/resources/co
 - **+1 for:** `if`/`for`/`while`/`switch`/`catch`/`? :` (+nesting), `else`, logical sequence changes, nested functions, recursion
 - **Excluded:** React components (PascalCase + returns JSX), default value patterns (`a || []`)
 
+#### Extraction Suggestions (Experimental)
+
+Enable `enableExtraction` to get refactoring suggestions for complex functions. Analyzes variable flow to identify extractable code blocks and potential issues.
+
+```json
+{
+  "complexity/max-cognitive": [
+    "error",
+    {
+      "max": 15,
+      "enableExtraction": true,
+      "extractionMultiplier": 1.5,
+      "minExtractionPercentage": 30
+    }
+  ]
+}
+```
+
+**Example output:**
+
+```
+Smart extraction suggestions:
+
+  Lines 9-22: Extractable with some refactoring
+    Complexity: +11 (55% of total)
+    Inputs: order, config, processedItems
+    Suggested: processOrder(order, config, processedItems): void
+
+  Lines 25-33: Requires significant refactoring
+    Complexity: +6 (30% of total)
+    Inputs: config, totalCount, processedItems
+    Issue: Mutates external variable 'totalCount' (line 27)
+    Suggestion: Consider returning 'totalCount' instead of mutating it
+```
+
+**Confidence levels:**
+
+- `Extractable with minimal changes` - clean extraction, few parameters
+- `Extractable with some refactoring` - may need early return handling
+- `Requires significant refactoring` - mutations or closures detected
+
+**TypeScript support:** Preserves type annotations in suggested signatures:
+
+```
+Inputs: config: Config, results: number[]
+Suggested: processBlock(config: Config, results: number[]): void
+```
+
 ---
 
 ## Attribution
