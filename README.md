@@ -9,6 +9,8 @@ Cyclomatic and cognitive complexity rules for [oxlint](https://oxc.rs/docs/guide
 - [Programmatic API](./src/index.ts) for custom tooling
 - Supports `.js` `.mjs` `.cjs` `.ts` `.tsx` `.jsx` `.vue` (extracts `<script>` blocks only)
 
+> **Note:** Only cognitive complexity tracks nesting depth, which enables more actionable suggestions, so refactoring tips available only there.
+
 ## Quick Start
 
 ```bash
@@ -80,31 +82,9 @@ Enforces maximum [cognitive complexity](https://www.sonarsource.com/resources/co
 
 #### Refactoring Tips
 
-The plugin detects common complexity patterns and provides actionable tips:
+The plugin detects common complexity patterns and provides actionable tips. All thresholds are configurable (set to `0` to disable):
 
-| Tip                   | Trigger                       | Suggestion                                |
-| --------------------- | ----------------------------- | ----------------------------------------- |
-| **Nesting**           | Top offender has nesting >= 3 | Extract inner loops into helper functions |
-| **Else-if chain**     | 4+ else-if branches           | Use a lookup object or switch statement   |
-| **Logical operators** | 3+ operator sequences         | Extract into named boolean variables      |
-
-**Example output:**
-
-```
-Breakdown:
-   Line 2: +1 for 'if'
-   Line 4: +1 for 'else if'
-   Line 6: +1 for 'else if'
-   Line 8: +1 for 'else if'
->>> Line 10: +1 for 'else if' [top offender]
-
-Tips:
-  • Long else-if chain (4 branches). Consider using a lookup object or switch statement.
-```
-
-**Configuration:** All thresholds are configurable (set to `0` to disable):
-
-```json
+```jsonc
 {
   "complexity/max-cognitive": [
     "error",
@@ -112,9 +92,9 @@ Tips:
       "max": 15,
       "nestingTipThreshold": 3,
       "elseIfChainThreshold": 4,
-      "logicalOperatorThreshold": 3
-    }
-  ]
+      "logicalOperatorThreshold": 3,
+    },
+  ],
 }
 ```
 
@@ -122,17 +102,19 @@ Tips:
 
 Enable `enableExtraction` to get refactoring suggestions for complex functions. Analyzes variable flow to identify extractable code blocks and potential issues.
 
-```json
+```jsonc
 {
   "complexity/max-cognitive": [
     "error",
     {
       "max": 15,
       "enableExtraction": true,
+      // Only suggest extractions when complexity exceeds 1.5× of max-cognitive threshold
       "extractionMultiplier": 1.5,
-      "minExtractionPercentage": 30
-    }
-  ]
+      // Only suggest blocks containing at least this % of total complexity
+      "minExtractionPercentage": 30,
+    },
+  ],
 }
 ```
 
@@ -152,12 +134,6 @@ Smart extraction suggestions:
     Issue: Mutates external variable 'totalCount' (line 27)
     Suggestion: Consider returning 'totalCount' instead of mutating it
 ```
-
-**Confidence levels:**
-
-- `Extractable with minimal changes` - clean extraction, few parameters
-- `Extractable with some refactoring` - may need early return handling
-- `Requires significant refactoring` - mutations or closures detected
 
 **TypeScript support:** Preserves type annotations in suggested signatures:
 

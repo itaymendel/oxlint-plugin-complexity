@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Refactoring tips for common complexity patterns (deep nesting, else-if chains, logical operators)
+- Configurable tip thresholds (`nestingTipThreshold`, `elseIfChainThreshold`, `logicalOperatorThreshold`)
+
+### Changed
+
+- Removed unused `estree-walker` dependency
+
 ## [0.2.0] - 2025-01-13
 
 ### Added
