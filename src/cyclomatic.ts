@@ -96,7 +96,7 @@ export function createCyclomaticVisitor(
 
     SwitchCase(node: SwitchCaseNode): void {
       // Only count non-default cases (test is null for default case)
-      if (node.test !== null && node.test !== undefined) {
+      if (node.test !== null) {
         addComplexity(node, 'case');
       }
     },
