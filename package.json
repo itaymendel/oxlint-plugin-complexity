@@ -49,14 +49,14 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@types/node": "^22.19.3",
+    "@types/node": "^22.19.5",
     "estree-walker": "^3.0.3",
     "husky": "^9.1.7",
-    "oxc-parser": "^0.107.0",
-    "oxlint": "^1.35.0",
+    "oxc-parser": "^0.108.0",
+    "oxlint": "^1.39.0",
     "prettier": "3.7.4",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.17"
   },
   "peerDependencies": {
     "oxlint": ">=1.0.0"

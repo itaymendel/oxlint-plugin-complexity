@@ -14,7 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Removed unused `estree-walker` dependency
+- Bump oxc-parser from 0.107.0 to 0.108.0
+- Bump oxlint from 1.38.0 to 1.39.0
+- Bump vitest from 4.0.16 to 4.0.17
 
 ## [0.2.0] - 2025-01-13
 
