@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-01-19
+
 ### Added
 
 - Refactoring tips for common complexity patterns (deep nesting, else-if chains, logical operators)
@@ -18,33 +20,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump oxlint from 1.38.0 to 1.39.0
 - Bump vitest from 4.0.16 to 4.0.17
 
-## [0.2.0] - 2025-01-13
+## [0.2.0] - 2026-01-13
 
 ### Added
 
 - Complexity breakdown in error messages inspired by jfmengels, with top offender marker
 
-## [0.1.4] - 2025-01-13
+## [0.1.4] - 2026-01-13
 
 ### Changed
 
 - Bump oxlint from 1.35.0 to 1.38.0
 - Bump oxc-parser from 0.105.0 to 0.107.0
 
-## [0.1.3] - 2024-12-15
+## [0.1.3] - 2025-12-15
 
 ### Changed
 
 - Updated dependencies
 - Setup Dependabot for automated dependency updates
 
-## [0.1.2] - 2024-12-01
+## [0.1.2] - 2025-12-01
 
 ### Changed
 
 - Updated GitHub Actions workflows
 
-## [0.1.1] - 2024-11-15
+## [0.1.1] - 2025-11-15
 
 ### Added
 
