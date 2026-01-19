@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Refactoring tips for common complexity patterns (deep nesting, else-if chains, logical operators)
 - Configurable tip thresholds (`nestingTipThreshold`, `elseIfChainThreshold`, `logicalOperatorThreshold`)
+- Smart extraction suggestions with variable flow analysis (opt-in via `enableExtraction: true`)
 
 ### Changed
 
@@ -58,7 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI pipeline
 - Pre-commit hooks with Husky
 
-[Unreleased]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v0.1.2...v0.1.3
