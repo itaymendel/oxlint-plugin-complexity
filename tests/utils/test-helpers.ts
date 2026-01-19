@@ -17,7 +17,7 @@ export interface ComplexityFunctionResult extends ComplexityResult {
 /**
  * Minimal mock of oxlint Context for testing.
  */
-function createMockContext(): Context {
+export function createMockContext(): Context {
   return {
     sourceCode: {
       text: '',
@@ -41,15 +41,63 @@ function getFunctionName(node: ESTreeNode, index: number): string {
 }
 
 /**
- * Walk an AST using estree-walker and call visitor handlers.
+ * Create a lookup table to convert byte offsets to line/column.
+ * oxc-parser returns `start`/`end` as byte offsets, not ESTree `loc` objects.
  */
-function walkWithVisitor(
+export function createLineOffsetTable(code: string): number[] {
+  const lineOffsets: number[] = [0];
+  for (let i = 0; i < code.length; i++) {
+    if (code[i] === '\n') {
+      lineOffsets.push(i + 1);
+    }
+  }
+  return lineOffsets;
+}
+
+/**
+ * Convert a byte offset to line/column position.
+ */
+export function offsetToLineCol(
+  offset: number,
+  lineOffsets: number[]
+): { line: number; column: number } {
+  for (let i = lineOffsets.length - 1; i >= 0; i--) {
+    if (offset >= lineOffsets[i]) {
+      return { line: i + 1, column: offset - lineOffsets[i] };
+    }
+  }
+  return { line: 1, column: offset };
+}
+
+/**
+ * Walk an AST using estree-walker and call visitor handlers.
+ * Converts oxc-parser's byte offsets (start/end) to ESTree loc objects.
+ */
+export function walkWithVisitor(
   ast: ESTreeNode,
-  visitor: Record<string, ((node: ESTreeNode) => void) | undefined>
+  visitor: Record<string, ((node: ESTreeNode) => void) | undefined>,
+  code?: string
 ): void {
+  const lineOffsets = code ? createLineOffsetTable(code) : null;
+
   walk(ast as EstreeWalkerNode, {
     enter(node, parent) {
       const esNode = node as unknown as ESTreeNode;
+
+      // Convert byte offsets to loc if we have the source code
+      if (lineOffsets) {
+        const nodeWithOffsets = node as unknown as { start?: number; end?: number };
+        if (typeof nodeWithOffsets.start === 'number' && typeof nodeWithOffsets.end === 'number') {
+          const startLoc = offsetToLineCol(nodeWithOffsets.start, lineOffsets);
+          const endLoc = offsetToLineCol(nodeWithOffsets.end, lineOffsets);
+          Object.defineProperty(esNode, 'loc', {
+            value: { start: startLoc, end: endLoc },
+            writable: true,
+            enumerable: false,
+            configurable: true,
+          });
+        }
+      }
 
       // Set parent reference as non-enumerable to prevent walker from traversing it
       Object.defineProperty(esNode, 'parent', {
@@ -101,7 +149,8 @@ function calculateComplexityWithVisitor(
       ? createCyclomaticVisitor(onComplexityCalculated)
       : createCognitiveVisitor(createMockContext(), onComplexityCalculated);
 
-  walkWithVisitor(program as unknown as ESTreeNode, listener);
+  // Pass code to walkWithVisitor so it can convert byte offsets to line/column
+  walkWithVisitor(program as unknown as ESTreeNode, listener, code);
 
   return results;
 }
