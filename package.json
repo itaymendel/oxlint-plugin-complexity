@@ -52,7 +52,7 @@
     "@types/node": "^22.19.5",
     "estree-walker": "^3.0.3",
     "husky": "^9.1.7",
-    "oxc-parser": "^0.108.0",
+    "oxc-parser": "^0.109.0",
     "oxlint": "^1.39.0",
     "prettier": "3.7.4",
     "typescript": "^5.9.3",
