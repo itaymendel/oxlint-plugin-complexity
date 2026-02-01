@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Refactored variable tracking to use oxlint's built-in scope APIs
+- Removed `reference-utils.ts` in favor of oxlint's `Reference.isRead()/isWrite()` methods
+- Removed visitor merging logic in `cognitive/visitor.ts`
+
 ## [0.3.1] - 2026-01-27
 
 ### Changed
