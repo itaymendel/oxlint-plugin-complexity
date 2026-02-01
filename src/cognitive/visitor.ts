@@ -18,7 +18,7 @@ import { isReactComponent } from './react.js';
 import { isRecursiveCall } from './recursion.js';
 import { createComplexityPoint, DEFAULT_COMPLEXITY_INCREMENT, getFunctionName } from '../utils.js';
 import { createComplexityVisitor } from '../visitor.js';
-import { createVariableTracker } from '../extraction/variable-tracker.js';
+import { getVariablesForFunction } from '../extraction/variable-tracker.js';
 import type { VariableInfo } from '../extraction/types.js';
 
 interface CognitiveFunctionScope extends FunctionScope {
@@ -33,25 +33,20 @@ interface VisitorContext {
   addComplexity: (node: ESTreeNode, message: string) => void;
   addStructuralComplexity: (node: ESTreeNode, message: string) => void;
   addNestingNode: (node: ESTreeNode) => void;
-  context: Context;
+  ruleContext: Context;
 }
 
-function handleNodeEnter(
+function handleNestingChange(
   node: ESTreeNode,
-  getCurrentScope: () => CognitiveFunctionScope | undefined
+  getCurrentScope: () => CognitiveFunctionScope | undefined,
+  direction: 'enter' | 'exit'
 ): void {
   const scope = getCurrentScope();
-  if (scope?.nestingNodes.has(node)) {
+  if (!scope?.nestingNodes.has(node)) return;
+
+  if (direction === 'enter') {
     scope.nestingLevel++;
-  }
-}
-
-function handleNodeExit(
-  node: ESTreeNode,
-  getCurrentScope: () => CognitiveFunctionScope | undefined
-): void {
-  const scope = getCurrentScope();
-  if (scope?.nestingNodes.has(node)) {
+  } else {
     scope.nestingLevel--;
     scope.nestingNodes.delete(node);
   }
@@ -73,19 +68,25 @@ function handleIfStatement(node: IfStatementNode, ctx: VisitorContext): void {
 }
 
 function handleLogicalExpression(node: LogicalExpressionNode, ctx: VisitorContext): void {
-  const scope = ctx.getCurrentScope();
-  if (!scope) return;
-
-  if (isJsxShortCircuit(node) || isDefaultValuePattern(node, ctx.context)) {
-    return;
-  }
+  if (!ctx.getCurrentScope()) return;
+  if (isJsxShortCircuit(node) || isDefaultValuePattern(node, ctx.ruleContext)) return;
 
   const parent = node.parent as LogicalExpressionNode | undefined;
-  const isPartOfSameSequence =
+  const isContinuationOfSameOperator =
     parent?.type === 'LogicalExpression' && parent.operator === node.operator;
 
-  if (!isPartOfSameSequence) {
+  if (!isContinuationOfSameOperator) {
     ctx.addComplexity(node, `logical operator '${node.operator}'`);
+  }
+}
+
+function handleLabeledJump(
+  node: LabeledJumpStatementNode,
+  keyword: 'break' | 'continue',
+  ctx: VisitorContext
+): void {
+  if (node.label) {
+    ctx.addComplexity(node, `${keyword} to label '${node.label.name}'`);
   }
 }
 
@@ -98,8 +99,8 @@ function buildVisitorHandlers(baseVisitor: Partial<Visitor>, ctx: VisitorContext
   return {
     ...baseVisitor,
 
-    '*': (node: ESTreeNode) => handleNodeEnter(node, ctx.getCurrentScope),
-    '*:exit': (node: ESTreeNode) => handleNodeExit(node, ctx.getCurrentScope),
+    '*': (node: ESTreeNode) => handleNestingChange(node, ctx.getCurrentScope, 'enter'),
+    '*:exit': (node: ESTreeNode) => handleNestingChange(node, ctx.getCurrentScope, 'exit'),
 
     CallExpression(node: CallExpressionNode): void {
       const scope = ctx.getCurrentScope();
@@ -134,17 +135,8 @@ function buildVisitorHandlers(baseVisitor: Partial<Visitor>, ctx: VisitorContext
       ctx.addNestingNode(node.alternate as ESTreeNode);
     },
 
-    BreakStatement(node: LabeledJumpStatementNode): void {
-      if (node.label) {
-        ctx.addComplexity(node, `break to label '${node.label.name}'`);
-      }
-    },
-
-    ContinueStatement(node: LabeledJumpStatementNode): void {
-      if (node.label) {
-        ctx.addComplexity(node, `continue to label '${node.label.name}'`);
-      }
-    },
+    BreakStatement: (node: LabeledJumpStatementNode) => handleLabeledJump(node, 'break', ctx),
+    ContinueStatement: (node: LabeledJumpStatementNode) => handleLabeledJump(node, 'continue', ctx),
 
     LogicalExpression: (node: LogicalExpressionNode) => handleLogicalExpression(node, ctx),
   } as Visitor;
@@ -179,12 +171,9 @@ function createCognitiveVisitorCore<TResult extends ComplexityResult>(
       }
 
       if (parentScope && globalFunctionNestingLevel > 0) {
-        parentScope.points.push(
-          createComplexityPoint(
-            node,
-            `nested ${node.type === 'ArrowFunctionExpression' ? 'arrow function' : 'function'}`
-          )
-        );
+        const functionType =
+          node.type === 'ArrowFunctionExpression' ? 'arrow function' : 'function';
+        parentScope.points.push(createComplexityPoint(node, `nested ${functionType}`));
       }
       globalFunctionNestingLevel++;
     },
@@ -227,7 +216,7 @@ function createCognitiveVisitorCore<TResult extends ComplexityResult>(
     addComplexity,
     addStructuralComplexity,
     addNestingNode,
-    context,
+    ruleContext: context,
   });
 }
 
@@ -260,32 +249,19 @@ export interface ComplexityResultWithVariables extends ComplexityResult {
   functionName: string;
 }
 
-function mergeVisitorHandler(
-  original: ((node: unknown) => void) | undefined,
-  additional: ((node: unknown) => void) | undefined
-): ((node: unknown) => void) | undefined {
-  if (!additional) return original;
-  if (!original) return additional;
-
-  return (node: unknown) => {
-    original(node);
-    additional(node);
-  };
-}
-
+/**
+ * Create a cognitive complexity visitor that also tracks variables within functions.
+ *
+ * Uses oxlint's built-in scope manager to collect variable information,
+ * which is then available in the complexity result for extraction analysis.
+ */
 export function createCognitiveVisitorWithTracking(
   context: Context,
   onComplexityCalculated: (result: ComplexityResultWithVariables, node: ESTreeNode) => void
 ): Visitor {
-  const variableTracker = createVariableTracker();
-
-  const cognitiveVisitor = createCognitiveVisitorCore<ComplexityResultWithVariables>(context, {
-    onEnterTopLevelFunction(node) {
-      variableTracker.enterFunction(node);
-    },
-
+  return createCognitiveVisitorCore<ComplexityResultWithVariables>(context, {
     onExitTopLevelFunction(node) {
-      const variables = variableTracker.exitFunction();
+      const variables = getVariablesForFunction(context, node);
       const funcNode = node as FunctionNode;
       const functionName = getFunctionName(funcNode, funcNode.parent);
       return { variables, functionName };
@@ -293,23 +269,4 @@ export function createCognitiveVisitorWithTracking(
 
     onComplexityCalculated,
   });
-
-  const trackerVisitor = variableTracker.visitor;
-
-  return {
-    ...cognitiveVisitor,
-    BlockStatement: mergeVisitorHandler(
-      cognitiveVisitor.BlockStatement as (n: unknown) => void,
-      trackerVisitor.BlockStatement as (n: unknown) => void
-    ),
-    'BlockStatement:exit': mergeVisitorHandler(
-      cognitiveVisitor['BlockStatement:exit'] as (n: unknown) => void,
-      trackerVisitor['BlockStatement:exit'] as (n: unknown) => void
-    ),
-    VariableDeclaration: trackerVisitor.VariableDeclaration as (n: unknown) => void,
-    Identifier: mergeVisitorHandler(
-      cognitiveVisitor.Identifier as (n: unknown) => void,
-      trackerVisitor.Identifier as (n: unknown) => void
-    ),
-  } as Visitor;
 }

@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { parseSync } from 'oxc-parser';
 import type { ESTreeNode, ComplexityResult } from '#src/types.js';
 import type { VariableInfo } from '#src/extraction/types.js';
 import {
@@ -14,7 +13,7 @@ import {
   formatExtractionSuggestions,
 } from '#src/extraction/index.js';
 import { loadFixture } from './utils/fixture-loader.js';
-import { createMockContext, walkWithVisitor } from './utils/test-helpers.js';
+import { createMockContext, walkWithVisitor, parseAndPrepareAst } from './utils/test-helpers.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(__dirname, 'fixtures');
@@ -27,20 +26,24 @@ interface ExtendedResult extends ComplexityResult {
 
 /**
  * Calculate cognitive complexity with variable tracking.
+ * Uses eslint-scope for scope analysis to match oxlint's behavior in tests.
  */
 function calculateCognitiveWithTracking(
   code: string,
   filename: string
 ): Map<string, ExtendedResult> {
-  const { program, errors } = parseSync(filename, code);
+  const { program, errors } = parseAndPrepareAst(code, filename);
   if (errors.length > 0) {
     throw new Error(`Parse errors: ${errors.map((e) => e.message).join(', ')}`);
   }
 
   const results = new Map<string, ExtendedResult>();
 
+  // Create context with scope analysis enabled
+  const context = createMockContext(program);
+
   const listener = createCognitiveVisitorWithTracking(
-    createMockContext(),
+    context,
     (result: ComplexityResultWithVariables, node: ESTreeNode) => {
       results.set(result.functionName, {
         total: result.total,
@@ -52,7 +55,7 @@ function calculateCognitiveWithTracking(
     }
   );
 
-  walkWithVisitor(program as unknown as ESTreeNode, listener, code);
+  walkWithVisitor(program, listener, code);
   return results;
 }
 

@@ -1,10 +1,13 @@
 import type { ESTreeNode, ComplexityPoint } from '../types.js';
 
+export type DeclarationType = 'const' | 'let' | 'var' | 'param' | 'destructured';
+export type ReferenceType = 'read' | 'write' | 'readwrite';
+
 export interface VariableInfo {
   name: string;
   declarationLine: number;
   declarationColumn: number;
-  declarationType: 'const' | 'let' | 'var' | 'param' | 'destructured';
+  declarationType: DeclarationType;
   isMutable: boolean;
   typeAnnotation?: string;
   references: VariableReference[];
@@ -14,7 +17,7 @@ export interface VariableInfo {
 export interface VariableReference {
   line: number;
   column: number;
-  type: 'read' | 'write' | 'readwrite';
+  type: ReferenceType;
   node: ESTreeNode;
 }
 
@@ -63,9 +66,10 @@ export interface TypedVariable {
 
 /**
  * Confidence level for an extraction suggestion.
- * - high: 0-3 inputs, 0-1 outputs, no mutations, no closures
- * - medium: 4-5 inputs OR 2 outputs OR minor issues
- * - low: 6+ inputs OR 3+ outputs OR mutations OR closures
+ *
+ * - `high`: 0-3 inputs, 0-1 outputs, no mutations, no closures
+ * - `medium`: 4-5 inputs OR 2 outputs OR minor issues
+ * - `low`: 6+ inputs OR 3+ outputs OR mutations OR closures
  */
 export type ExtractionConfidence = 'high' | 'medium' | 'low';
 
@@ -94,23 +98,4 @@ export interface ExtractionOptions {
   maxCandidates?: number;
   /** Minimum total complexity to trigger analysis (default: 150% of threshold) */
   minComplexityMultiplier?: number;
-}
-
-export interface VariableScope {
-  node: ESTreeNode;
-  variables: Map<string, VariableInfo>;
-  startLine: number;
-  endLine: number;
-  level: number;
-}
-
-export interface VariableTrackerContext {
-  variables: Map<string, VariableInfo>;
-  scopeStack: VariableScope[];
-  getCurrentScope: () => VariableScope | undefined;
-  getCurrentScopeLevel: () => number;
-  declareVariable: (name: string, info: Omit<VariableInfo, 'references' | 'scopeLevel'>) => void;
-  addReference: (name: string, ref: Omit<VariableReference, 'node'>, node: ESTreeNode) => void;
-  getVariablesInRange: (startLine: number, endLine: number) => VariableInfo[];
-  getCapturedVariables: (functionStartLine: number, functionEndLine: number) => VariableInfo[];
 }

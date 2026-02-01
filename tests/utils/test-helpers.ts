@@ -5,6 +5,8 @@ import { createCyclomaticVisitor } from '#src/cyclomatic.js';
 import { createCognitiveVisitor } from '#src/cognitive/visitor.js';
 import { getFunctionName as getProductionFunctionName } from '#src/utils.js';
 import type { ESTreeNode, FunctionNode, ComplexityResult, Context } from '#src/types.js';
+import type { ScopeManager } from 'oxlint';
+import { analyzeScope } from './test-scope-analyzer.js';
 
 /**
  * Result of complexity calculation for a single function.
@@ -12,32 +14,6 @@ import type { ESTreeNode, FunctionNode, ComplexityResult, Context } from '#src/t
  */
 export interface ComplexityFunctionResult extends ComplexityResult {
   name: string;
-}
-
-/**
- * Minimal mock of oxlint Context for testing.
- */
-export function createMockContext(): Context {
-  return {
-    sourceCode: {
-      text: '',
-      getText: () => '',
-    },
-    options: [],
-    report: () => {},
-  } as unknown as Context;
-}
-
-function getFunctionName(node: ESTreeNode, index: number): string {
-  const funcNode = node as ESTreeNode & { parent?: ESTreeNode };
-  const name = getProductionFunctionName(funcNode as FunctionNode, funcNode.parent);
-
-  // Replace production anonymous placeholders with indexed names for clearer test output
-  if (name === '<arrow>' || name === '<anonymous>') {
-    return `anonymous_${index + 1}`;
-  }
-
-  return name;
 }
 
 /**
@@ -67,6 +43,74 @@ export function offsetToLineCol(
     }
   }
   return { line: 1, column: offset };
+}
+
+/**
+ * Add parent references and loc objects to all AST nodes.
+ * Must be called before scope analysis.
+ */
+function prepareAstForAnalysis(ast: ESTreeNode, code: string): void {
+  const lineOffsets = createLineOffsetTable(code);
+
+  walk(ast as EstreeWalkerNode, {
+    enter(node, parent) {
+      const esNode = node as unknown as ESTreeNode;
+      const nodeWithOffsets = node as unknown as { start?: number; end?: number };
+
+      // Convert byte offsets to loc
+      if (typeof nodeWithOffsets.start === 'number' && typeof nodeWithOffsets.end === 'number') {
+        const startLoc = offsetToLineCol(nodeWithOffsets.start, lineOffsets);
+        const endLoc = offsetToLineCol(nodeWithOffsets.end, lineOffsets);
+        Object.defineProperty(esNode, 'loc', {
+          value: { start: startLoc, end: endLoc },
+          writable: true,
+          enumerable: false,
+          configurable: true,
+        });
+      }
+
+      // Set parent reference
+      Object.defineProperty(esNode, 'parent', {
+        value: parent as unknown as ESTreeNode,
+        writable: true,
+        enumerable: false,
+        configurable: true,
+      });
+    },
+  });
+}
+
+/**
+ * Create a mock oxlint Context for testing.
+ *
+ * If an AST is provided, scope analysis will be performed using a custom
+ * scope analyzer designed for oxc-parser's AST format.
+ */
+export function createMockContext(ast?: ESTreeNode): Context {
+  const scopeManager: ScopeManager | null = ast ? analyzeScope(ast) : null;
+
+  return {
+    sourceCode: {
+      text: '',
+      getText: () => '',
+      scopeManager,
+      getScope: (node: ESTreeNode) => scopeManager?.acquire(node) ?? null,
+    },
+    options: [],
+    report: () => {},
+  } as unknown as Context;
+}
+
+function getFunctionName(node: ESTreeNode, index: number): string {
+  const funcNode = node as ESTreeNode & { parent?: ESTreeNode };
+  const name = getProductionFunctionName(funcNode as FunctionNode, funcNode.parent);
+
+  // Replace production anonymous placeholders with indexed names for clearer test output
+  if (name === '<arrow>' || name === '<anonymous>') {
+    return `anonymous_${index + 1}`;
+  }
+
+  return name;
 }
 
 /**
@@ -116,6 +160,25 @@ export function walkWithVisitor(
       visitor['*:exit']?.(esNode);
     },
   });
+}
+
+/**
+ * Parse code and prepare AST with parent refs and loc for scope analysis.
+ */
+export function parseAndPrepareAst(
+  code: string,
+  filename: string
+): { program: ESTreeNode; errors: Array<{ message: string }> } {
+  const { program, errors } = parseSync(filename, code);
+
+  if (errors.length === 0) {
+    prepareAstForAnalysis(program as unknown as ESTreeNode, code);
+  }
+
+  return {
+    program: program as unknown as ESTreeNode,
+    errors: errors as Array<{ message: string }>,
+  };
 }
 
 /**
