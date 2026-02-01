@@ -1,0 +1,61 @@
+---
+// @complexity categorizeItem:cyclomatic=8,cognitive=14
+type Category = 'high' | 'medium' | 'low' | 'unknown';
+
+interface Item {
+  id: string;
+  score: number;
+  tags: string[];
+  metadata?: {
+    verified: boolean;
+    priority?: number;
+  };
+}
+
+function categorizeItem(item: Item): Category {
+  if (!item.metadata) {
+    if (item.score > 80) {
+      return 'high';
+    }
+    return 'unknown';
+  }
+
+  if (item.metadata.verified) {
+    if (item.metadata.priority !== undefined) {
+      if (item.metadata.priority > 5) {
+        return 'high';
+      }
+      if (item.metadata.priority > 2) {
+        return 'medium';
+      }
+      return 'low';
+    }
+    return item.score > 50 ? 'medium' : 'low';
+  }
+
+  return 'unknown';
+}
+
+const items: Item[] = [
+  { id: '1', score: 90, tags: ['featured'], metadata: { verified: true, priority: 8 } },
+  { id: '2', score: 60, tags: [], metadata: { verified: true } },
+  { id: '3', score: 30, tags: ['new'] },
+];
+
+const categorized = items.map((item) => ({
+  ...item,
+  category: categorizeItem(item),
+}));
+---
+
+<html>
+  <body>
+    <ul>
+      {categorized.map((item) => (
+        <li class={item.category}>
+          {item.id}: {item.category}
+        </li>
+      ))}
+    </ul>
+  </body>
+</html>

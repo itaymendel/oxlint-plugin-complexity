@@ -1,17 +1,21 @@
 import { readFileSync, readdirSync } from 'fs';
 import { join, relative } from 'path';
-import { extractVueScript } from './vue-extractor';
+import { extractVueScript, extractSvelteScript, extractAstroScript } from './extractors';
 import { parseComplexityComment, type FunctionExpectation } from './complexity-comment';
 
-const FILE_TYPES = ['js', 'ts', 'jsx', 'tsx', 'vue'] as const;
+const FILE_TYPES = ['js', 'ts', 'jsx', 'tsx', 'vue', 'svelte', 'astro'] as const;
 export type FileType = (typeof FILE_TYPES)[number];
 
 /**
  * Get the filename to use for parsing based on fixture type
  */
 export function getParseFilename(fixture: { fileType: string; scriptLang?: string }): string {
-  if (fixture.fileType === 'vue') {
+  if (fixture.fileType === 'vue' || fixture.fileType === 'svelte') {
     return `test.${fixture.scriptLang ?? 'js'}`;
+  }
+  if (fixture.fileType === 'astro') {
+    // Astro frontmatter is always TypeScript
+    return 'test.ts';
   }
   return `test.${fixture.fileType}`;
 }
@@ -34,6 +38,16 @@ export function loadFixture(filePath: string, fixturesRoot: string) {
 
   if (fileType === 'vue') {
     const extracted = extractVueScript(rawContent);
+    code = extracted.script;
+    scriptLang = extracted.lang;
+    firstLine = code.split('\n')[0]?.trim() || '';
+  } else if (fileType === 'svelte') {
+    const extracted = extractSvelteScript(rawContent);
+    code = extracted.script;
+    scriptLang = extracted.lang;
+    firstLine = code.split('\n')[0]?.trim() || '';
+  } else if (fileType === 'astro') {
+    const extracted = extractAstroScript(rawContent);
     code = extracted.script;
     scriptLang = extracted.lang;
     firstLine = code.split('\n')[0]?.trim() || '';

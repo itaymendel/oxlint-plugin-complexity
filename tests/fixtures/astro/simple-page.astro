@@ -1,0 +1,23 @@
+---
+// @complexity getGreeting:cyclomatic=2,cognitive=1
+interface Props {
+  name?: string;
+}
+
+const { name } = Astro.props;
+
+function getGreeting(userName: string | undefined): string {
+  if (userName) {
+    return `Hello, ${userName}!`;
+  }
+  return 'Hello, stranger!';
+}
+
+const greeting = getGreeting(name);
+---
+
+<html>
+  <body>
+    <h1>{greeting}</h1>
+  </body>
+</html>
