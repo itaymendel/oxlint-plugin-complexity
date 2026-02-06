@@ -38,7 +38,6 @@ interface ComplexityRuleConfig {
 
   /** Factory to create the visitor */
   createVisitor: (
-    context: Context,
     onComplexityCalculated: (result: ComplexityResult, node: ESTreeNode) => void
   ) => Visitor;
 
@@ -77,7 +76,7 @@ function createComplexityRule(config: ComplexityRuleConfig): Rule {
           maxComplexity = options.max ?? config.defaultMax;
         },
 
-        ...config.createVisitor(context, (result, node) => {
+        ...config.createVisitor((result, node) => {
           if (result.total > maxComplexity) {
             const funcNode = node as FunctionNode;
             const name = getFunctionName(funcNode, funcNode.parent);
@@ -112,8 +111,7 @@ export const maxCyclomatic = createComplexityRule({
   schemaMinimum: 1,
   description: 'Enforce a maximum cyclomatic complexity for functions',
   url: 'https://github.com/itaymendel/oxlint-plugin-complexity#complexitymax-cyclomatic',
-  createVisitor: (_context, onComplexityCalculated) =>
-    createCyclomaticVisitor(onComplexityCalculated),
+  createVisitor: (onComplexityCalculated) => createCyclomaticVisitor(onComplexityCalculated),
 });
 
 /**
@@ -245,7 +243,6 @@ export const maxCognitive: Rule = defineRule({
                 result.points,
                 result.total,
                 result.variables,
-                result.functionName,
                 extractionOptions
               );
               extractionOutput = formatExtractionSuggestions(suggestions);

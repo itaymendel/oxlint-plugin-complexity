@@ -173,7 +173,7 @@ describe('Smart Extraction Detection', () => {
         'processOrder'
       );
 
-      expect(suggestions.length).toBeGreaterThan(0);
+      expect(suggestions.length).toBe(2);
     });
 
     it('identifies input variables for extraction', () => {
@@ -186,7 +186,7 @@ describe('Smart Extraction Detection', () => {
       );
 
       const suggestion = suggestions[0];
-      expect(suggestion.inputs.length).toBeGreaterThan(0);
+      expect(suggestion.inputs.map((i) => i.name)).toEqual(['order', 'config']);
     });
 
     it('calculates complexity percentage for each candidate', () => {
@@ -228,9 +228,8 @@ describe('Smart Extraction Detection', () => {
       );
 
       const highConfidence = suggestions.find((s) => s.confidence === 'high');
-      if (highConfidence) {
-        expect(highConfidence.suggestedSignature).toBeDefined();
-      }
+      expect(highConfidence).toBeDefined();
+      expect(highConfidence!.suggestedSignature).toBeDefined();
     });
 
     it('detects mutation issues', () => {
@@ -243,11 +242,8 @@ describe('Smart Extraction Detection', () => {
       );
 
       const withMutations = suggestions.find((s) => s.issues.some((i) => i.type === 'mutation'));
-
-      // If there's a block with mutations, it should be flagged
-      if (withMutations) {
-        expect(withMutations.confidence).not.toBe('high');
-      }
+      expect(withMutations).toBeDefined();
+      expect(withMutations!.confidence).toBe('low');
     });
 
     it('preserves type annotations in TypeScript suggestions', () => {
@@ -271,20 +267,28 @@ describe('Smart Extraction Detection', () => {
   describe('Output Formatting', () => {
     it('formats extraction suggestions correctly', () => {
       const code = `
-        function complex(a, b, c) {
+        function complex(data, config) {
           let result = 0;
-          for (const x of a) {
-            if (x > 0) {
-              for (const y of b) {
-                if (y > 0) {
-                  if (c) {
-                    result += x + y;
-                  }
-                }
+          for (const item of data) {
+            if (item.active) {
+              if (config.validate && item.value > 0) {
+                result += item.value;
               }
             }
           }
-          return result;
+
+          const factor = config.factor || 1;
+          const adjusted = result * factor;
+
+          let total = adjusted;
+          for (const bonus of config.bonuses || []) {
+            if (bonus.active) {
+              if (bonus.value > 0) {
+                total += bonus.value;
+              }
+            }
+          }
+          return total;
         }
       `;
 
@@ -299,13 +303,12 @@ describe('Smart Extraction Detection', () => {
         'complex'
       );
 
-      const formatted = formatExtractionSuggestions(suggestions);
+      expect(suggestions.length).toBe(2);
 
-      if (suggestions.length > 0) {
-        expect(formatted).toContain('Smart extraction suggestions');
-        expect(formatted).toContain('Lines');
-        expect(formatted).toContain('Complexity');
-      }
+      const formatted = formatExtractionSuggestions(suggestions);
+      expect(formatted).toContain('Smart extraction suggestions');
+      expect(formatted).toContain('Lines');
+      expect(formatted).toContain('Complexity');
     });
 
     it('returns empty string when no suggestions', () => {
@@ -381,42 +384,51 @@ describe('Smart Extraction Detection', () => {
 
     it('shows early-return issues in formatted output', () => {
       const code = `
-        function complexWithEarlyReturn(a, b, c) {
-          if (!a) return null;
-          let result = 0;
-          for (const x of b) {
-            if (x > 0) {
-              for (const y of c) {
-                if (y > 0) {
-                  result += x + y;
-                }
+        function processData(items, config) {
+          if (!items) return null;
+          let total = 0;
+          for (const item of items) {
+            if (item.valid) {
+              total += item.value;
+            }
+          }
+
+          const factor = config.factor || 1;
+          const adjusted = total * factor;
+          const prefix = config.prefix || '';
+
+          let output = '';
+          for (const entry of config.entries || []) {
+            if (entry.active) {
+              if (entry.value > adjusted) {
+                output += prefix + entry.label;
               }
             }
           }
-          return result;
+          return output;
         }
       `;
 
       const results = calculateCognitiveWithTracking(code, 'test.js');
-      const result = results.get('complexWithEarlyReturn')!;
+      const result = results.get('processData')!;
 
       const suggestions = analyzeExtractionOpportunities(
         result.node,
         result.points,
         result.total,
         result.variables,
-        'complexWithEarlyReturn'
+        'processData'
       );
 
-      const formatted = formatExtractionSuggestions(suggestions);
+      expect(suggestions.length).toBe(2);
 
-      // If there are suggestions with early-return issues, they should now be visible
-      const hasEarlyReturnIssue = suggestions.some((s) =>
+      const withEarlyReturn = suggestions.find((s) =>
         s.issues.some((i) => i.type === 'early-return')
       );
-      if (hasEarlyReturnIssue) {
-        expect(formatted).toContain('early return');
-      }
+      expect(withEarlyReturn).toBeDefined();
+
+      const formatted = formatExtractionSuggestions(suggestions);
+      expect(formatted).toContain('early return');
     });
   });
 
@@ -467,15 +479,29 @@ describe('Smart Extraction Detection', () => {
 
     it('determines which variables are used after the extraction range', () => {
       const code = `
-        function compute(a, b) {
-          let intermediate = 0;
-          for (let i = 0; i < a; i++) {
-            if (i > 0) {
-              intermediate += i;
+        function compute(data, config) {
+          for (const item of data) {
+            if (item.active) {
+              if (item.value > config.min) {
+                console.log(item.value);
+              }
+            }
+            const processed = item.id + item.value;
+            console.log(processed);
+          }
+
+          const factor = config.factor || 1;
+          const base = factor * 2;
+          const extra = base + 1;
+
+          for (const rule of config.rules || []) {
+            if (rule.enabled) {
+              if (rule.value > extra) {
+                console.log(rule.label);
+              }
             }
           }
-          const result = intermediate * b;
-          return result;
+          return extra;
         }
       `;
 
@@ -490,10 +516,11 @@ describe('Smart Extraction Detection', () => {
         'compute'
       );
 
-      // If intermediate is modified in a block and used after,
-      // it should appear in outputs
-      const hasOutputs = suggestions.some((s) => s.outputs.length > 0);
-      expect(typeof hasOutputs).toBe('boolean'); // Just verify the check runs
+      expect(suggestions.length).toBe(2);
+
+      const withOutputs = suggestions.find((s) => s.outputs.length > 0);
+      expect(withOutputs).toBeDefined();
+      expect(withOutputs!.outputs.map((o) => o.name)).toContain('item');
     });
 
     it('suggests function signatures for clean extractions', () => {
@@ -502,16 +529,24 @@ describe('Smart Extraction Detection', () => {
           const processed = [];
           for (const item of items) {
             if (item.valid) {
-              for (const child of item.children || []) {
-                if (child.active) {
-                  if (options.transform) {
-                    processed.push(child);
-                  }
-                }
+              if (options.transform) {
+                processed.push(item.id);
               }
             }
           }
-          return processed;
+
+          const prefix = options.prefix || '';
+          const separator = options.separator || ',';
+
+          let output = '';
+          for (const entry of processed) {
+            if (entry) {
+              if (prefix) {
+                output += prefix + entry + separator;
+              }
+            }
+          }
+          return output;
         }
       `;
 
@@ -526,13 +561,14 @@ describe('Smart Extraction Detection', () => {
         'handleItems'
       );
 
+      expect(suggestions.length).toBe(2);
+
       const withSignature = suggestions.find((s) => s.suggestedSignature);
-      if (suggestions.length > 0 && withSignature) {
-        expect(withSignature.suggestedSignature).toMatch(/\w+\(/);
-        expect(withSignature.suggestedSignature).toMatch(
-          new RegExp(`^${PLACEHOLDER_FUNCTION_NAME}\\(`)
-        );
-      }
+      expect(withSignature).toBeDefined();
+      expect(withSignature!.suggestedSignature).toMatch(/\w+\(/);
+      expect(withSignature!.suggestedSignature).toMatch(
+        new RegExp(`^${PLACEHOLDER_FUNCTION_NAME}\\(`)
+      );
     });
   });
 });

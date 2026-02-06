@@ -15,7 +15,6 @@ export function analyzeExtractionOpportunities(
   points: ComplexityPoint[],
   totalComplexity: number,
   variables: Map<string, VariableInfo>,
-  functionName: string,
   options?: ExtractionOptions
 ): ExtractionSuggestion[] {
   if (!variables || variables.size === 0) {
@@ -27,11 +26,10 @@ export function analyzeExtractionOpportunities(
     return [];
   }
 
-  const functionEndLine = functionNode.loc?.end.line ?? 0;
   const suggestions: ExtractionSuggestion[] = [];
 
   for (const candidate of candidates) {
-    const flow = analyzeVariableFlow(candidate, variables, functionNode, functionEndLine);
+    const flow = analyzeVariableFlow(candidate, variables, functionNode);
     const suggestion = createExtractionSuggestion(candidate, flow);
     suggestions.push(suggestion);
   }

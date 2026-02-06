@@ -200,8 +200,7 @@ function hasEarlyReturn(candidate: ExtractionCandidate, functionNode: ESTreeNode
 export function analyzeVariableFlow(
   candidate: ExtractionCandidate,
   variables: Map<string, VariableInfo>,
-  functionNode: ESTreeNode,
-  _functionEndLine: number
+  functionNode: ESTreeNode
 ): VariableFlowAnalysis {
   const inputs: VariableInfo[] = [];
   const outputs: VariableInfo[] = [];

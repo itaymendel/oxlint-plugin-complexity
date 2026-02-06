@@ -12,8 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Test fixtures for Svelte (`.svelte`) and Astro (`.astro`) files
 - Documented framework support: React, Vue, Angular, Svelte, Astro, Solid, Qwik
 
+### Changed
+
+- Clean up unused parameters left over from v0.3.2 refactoring across internal APIs
+
 ### Fixed
 
+- Strengthen extraction tests: replace weak/guarded assertions with exact values and rewrite inline fixtures that produced zero candidates.
 - Fix `hasEarlyReturn` to use AST-based detection.
 - Fix `suggestFunctionName` producing incorrect names; replaced with `"extracted"` placeholder.
 
