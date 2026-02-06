@@ -29,7 +29,6 @@ function formatSuggestion(suggestion: ExtractionSuggestion): string {
   }
 
   for (const issue of suggestion.issues) {
-    if (issue.type === 'early-return') continue;
     const lineInfo = issue.line ? ` (line ${issue.line})` : '';
     lines.push(`    Issue: ${issue.description}${lineInfo}`);
   }

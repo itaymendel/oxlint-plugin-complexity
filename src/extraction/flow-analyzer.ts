@@ -122,14 +122,85 @@ function detectClosures(
   });
 }
 
-function hasEarlyReturn(candidate: ExtractionCandidate): boolean {
-  return candidate.constructs.some((c) => c === 'if' || c === 'switch' || c === 'ternary operator');
+const NESTED_FUNCTION_TYPES = new Set([
+  'FunctionDeclaration',
+  'FunctionExpression',
+  'ArrowFunctionExpression',
+]);
+
+const SKIP_WALK_KEYS = new Set(['parent', 'loc', 'range']);
+
+function isNodeLike(value: unknown): value is ESTreeNode {
+  return typeof value === 'object' && value !== null && 'type' in value;
+}
+
+function isOutsideRange(n: ESTreeNode, startLine: number, endLine: number): boolean {
+  return !!n.loc && (n.loc.end.line < startLine || n.loc.start.line > endLine);
+}
+
+function isReturnInRange(n: ESTreeNode, startLine: number, endLine: number): boolean {
+  return (
+    n.type === 'ReturnStatement' &&
+    !!n.loc &&
+    n.loc.start.line >= startLine &&
+    n.loc.start.line <= endLine
+  );
+}
+
+/** Walk AST child properties, invoking `visit` on each child node. */
+function walkChildren(n: ESTreeNode, visit: (child: ESTreeNode) => void): void {
+  for (const key of Object.keys(n)) {
+    if (SKIP_WALK_KEYS.has(key)) continue;
+    const child = (n as unknown as Record<string, unknown>)[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        if (isNodeLike(item)) visit(item);
+      }
+    } else if (isNodeLike(child)) {
+      visit(child);
+    }
+  }
+}
+
+function collectReturnStatements(
+  node: ESTreeNode,
+  startLine: number,
+  endLine: number
+): ESTreeNode[] {
+  const returns: ESTreeNode[] = [];
+
+  function walk(n: ESTreeNode | null | undefined): void {
+    if (!isNodeLike(n)) return;
+    if (isOutsideRange(n, startLine, endLine)) return;
+    if (n !== node && NESTED_FUNCTION_TYPES.has(n.type)) return;
+
+    if (isReturnInRange(n, startLine, endLine)) {
+      returns.push(n);
+    }
+
+    walkChildren(n, walk);
+  }
+
+  walk(node);
+  return returns;
+}
+
+function hasEarlyReturn(candidate: ExtractionCandidate, functionNode: ESTreeNode): boolean {
+  const returns = collectReturnStatements(functionNode, candidate.startLine, candidate.endLine);
+
+  if (returns.length === 0) return false;
+  if (returns.length > 1) return true;
+
+  // Single return: only flag if not near the end of the candidate.
+  // Allow 1 line of slack for the closing brace.
+  const returnLine = returns[0].loc?.start.line ?? 0;
+  return returnLine < candidate.endLine - 1;
 }
 
 export function analyzeVariableFlow(
   candidate: ExtractionCandidate,
   variables: Map<string, VariableInfo>,
-  _functionNode: ESTreeNode,
+  functionNode: ESTreeNode,
   _functionEndLine: number
 ): VariableFlowAnalysis {
   const inputs: VariableInfo[] = [];
@@ -165,6 +236,6 @@ export function analyzeVariableFlow(
     internalOnly,
     mutations,
     closures,
-    hasEarlyReturn: hasEarlyReturn(candidate),
+    hasEarlyReturn: hasEarlyReturn(candidate, functionNode),
   };
 }
