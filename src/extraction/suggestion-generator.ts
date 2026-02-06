@@ -112,7 +112,7 @@ function detectIssues(
   if (flow.hasEarlyReturn) {
     issues.push({
       type: 'early-return',
-      description: 'May contain early return statements',
+      description: 'Contains early return statements that complicate extraction',
     });
   }
 
@@ -167,7 +167,7 @@ export function createExtractionSuggestion(
   const outputs = flow.outputs.map(toTypedVariable);
 
   let suggestedSignature: string | undefined;
-  if (confidence !== 'low' && issues.filter((i) => i.type !== 'early-return').length === 0) {
+  if (confidence !== 'low' && issues.length === 0) {
     const suggestedName = suggestFunctionName(originalFunctionName, candidate);
     suggestedSignature = generateSignature(suggestedName, inputs, outputs);
   }

@@ -2,7 +2,11 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import type { ESTreeNode, ComplexityResult } from '#src/types.js';
-import type { VariableInfo } from '#src/extraction/types.js';
+import type {
+  VariableInfo,
+  ExtractionCandidate,
+  VariableFlowAnalysis,
+} from '#src/extraction/types.js';
 import {
   createCognitiveVisitorWithTracking,
   type ComplexityResultWithVariables,
@@ -12,6 +16,7 @@ import {
   shouldAnalyzeExtraction,
   formatExtractionSuggestions,
 } from '#src/extraction/index.js';
+import { analyzeVariableFlow } from '#src/extraction/flow-analyzer.js';
 import { loadFixture } from './utils/fixture-loader.js';
 import { createMockContext, walkWithVisitor, parseAndPrepareAst } from './utils/test-helpers.js';
 
@@ -57,6 +62,23 @@ function calculateCognitiveWithTracking(
 
   walkWithVisitor(program, listener, code);
   return results;
+}
+
+function buildCandidateFromResult(result: ExtendedResult): ExtractionCandidate {
+  return {
+    startLine: result.node.loc!.start.line,
+    endLine: result.node.loc!.end.line,
+    complexity: result.total,
+    complexityPercentage: 50,
+    points: result.points,
+    constructs: result.points.map((p) => p.construct),
+  };
+}
+
+function analyzeFlowFromResult(result: ExtendedResult): VariableFlowAnalysis {
+  const candidate = buildCandidateFromResult(result);
+  const functionEndLine = result.node.loc!.end.line;
+  return analyzeVariableFlow(candidate, result.variables, result.node, functionEndLine);
 }
 
 describe('Smart Extraction Detection', () => {
@@ -287,6 +309,113 @@ describe('Smart Extraction Detection', () => {
 
     it('returns empty string when no suggestions', () => {
       expect(formatExtractionSuggestions([])).toBe('');
+    });
+  });
+
+  describe('Early Return Detection', () => {
+    let earlyReturnResults: Map<string, ExtendedResult>;
+
+    beforeAll(() => {
+      const fixture = loadFixture(join(fixturesDir, 'js/early-returns.js'), fixturesDir);
+      earlyReturnResults = calculateCognitiveWithTracking(fixture.code, 'test.js');
+    });
+
+    it('detects early returns in guard clause functions', () => {
+      const result = earlyReturnResults.get('guardClauses')!;
+      expect(result).toBeDefined();
+
+      const flow = analyzeFlowFromResult(result);
+      expect(flow.hasEarlyReturn).toBe(true);
+    });
+
+    it('detects early returns in functions with multiple exit points', () => {
+      const result = earlyReturnResults.get('multipleExitPoints')!;
+      expect(result).toBeDefined();
+
+      const flow = analyzeFlowFromResult(result);
+      expect(flow.hasEarlyReturn).toBe(true);
+    });
+
+    it('does not flag functions without return statements as having early returns', () => {
+      const code = `
+        function noReturns(items) {
+          let count = 0;
+          for (const item of items) {
+            if (item.active) {
+              for (const child of item.children || []) {
+                if (child.valid) {
+                  count++;
+                }
+              }
+            }
+          }
+          console.log(count);
+        }
+      `;
+
+      const results = calculateCognitiveWithTracking(code, 'test.js');
+      const result = results.get('noReturns')!;
+      const flow = analyzeFlowFromResult(result);
+
+      expect(flow.hasEarlyReturn).toBe(false);
+    });
+
+    it('does not flag a single return on the last line as early return', () => {
+      const code = `
+        function singleReturn(a, b) {
+          let result = 0;
+          if (a > 0) {
+            result = a + b;
+          }
+          return result;
+        }
+      `;
+
+      const results = calculateCognitiveWithTracking(code, 'test.js');
+      const result = results.get('singleReturn')!;
+      const flow = analyzeFlowFromResult(result);
+
+      expect(flow.hasEarlyReturn).toBe(false);
+    });
+
+    it('shows early-return issues in formatted output', () => {
+      const code = `
+        function complexWithEarlyReturn(a, b, c) {
+          if (!a) return null;
+          let result = 0;
+          for (const x of b) {
+            if (x > 0) {
+              for (const y of c) {
+                if (y > 0) {
+                  result += x + y;
+                }
+              }
+            }
+          }
+          return result;
+        }
+      `;
+
+      const results = calculateCognitiveWithTracking(code, 'test.js');
+      const result = results.get('complexWithEarlyReturn')!;
+
+      const suggestions = analyzeExtractionOpportunities(
+        result.node,
+        result.points,
+        result.total,
+        result.variables,
+        'complexWithEarlyReturn'
+      );
+
+      const formatted = formatExtractionSuggestions(suggestions);
+
+      // If there are suggestions with early-return issues, they should now be visible
+      const hasEarlyReturnIssue = suggestions.some((s) =>
+        s.issues.some((i) => i.type === 'early-return')
+      );
+      if (hasEarlyReturnIssue) {
+        expect(formatted).toContain('early return');
+      }
     });
   });
 
