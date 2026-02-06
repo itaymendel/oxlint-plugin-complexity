@@ -15,6 +15,7 @@ import {
   analyzeExtractionOpportunities,
   shouldAnalyzeExtraction,
   formatExtractionSuggestions,
+  PLACEHOLDER_FUNCTION_NAME,
 } from '#src/extraction/index.js';
 import { analyzeVariableFlow } from '#src/extraction/flow-analyzer.js';
 import { loadFixture } from './utils/fixture-loader.js';
@@ -528,6 +529,9 @@ describe('Smart Extraction Detection', () => {
       const withSignature = suggestions.find((s) => s.suggestedSignature);
       if (suggestions.length > 0 && withSignature) {
         expect(withSignature.suggestedSignature).toMatch(/\w+\(/);
+        expect(withSignature.suggestedSignature).toMatch(
+          new RegExp(`^${PLACEHOLDER_FUNCTION_NAME}\\(`)
+        );
       }
     });
   });

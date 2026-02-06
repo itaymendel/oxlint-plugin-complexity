@@ -8,7 +8,7 @@ import type {
 } from './types.js';
 
 const MAX_HIGH_CONFIDENCE_INPUTS = 3;
-const PLACEHOLDER_FUNCTION_NAME = 'extracted';
+export const PLACEHOLDER_FUNCTION_NAME = 'extracted';
 const MAX_HIGH_CONFIDENCE_OUTPUTS = 1;
 const MAX_MEDIUM_CONFIDENCE_INPUTS = 5;
 const MAX_MEDIUM_CONFIDENCE_OUTPUTS = 2;
