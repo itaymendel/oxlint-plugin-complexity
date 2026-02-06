@@ -25,6 +25,25 @@ export { createCognitiveVisitor } from './cognitive/visitor.js';
 // Re-export utilities
 export { getFunctionName, createComplexityPoint, summarizeComplexity } from './utils.js';
 
+// Re-export extraction analysis types
+export type {
+  ExtractionSuggestion,
+  ExtractionOptions,
+  ExtractionCandidate,
+  ExtractionConfidence,
+  VariableFlowAnalysis,
+  VariableInfo,
+  TypedVariable,
+  ExtractionIssue,
+} from './extraction/index.js';
+
+// Re-export extraction analysis functions
+export {
+  analyzeExtractionOpportunities,
+  shouldAnalyzeExtraction,
+  formatExtractionSuggestions,
+} from './extraction/index.js';
+
 /**
  * oxlint-plugin-complexity
  *
