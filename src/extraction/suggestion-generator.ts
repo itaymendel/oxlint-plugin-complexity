@@ -34,7 +34,8 @@ function determineConfidence(flow: VariableFlowAnalysis): ExtractionConfidence {
   if (
     inputCount > MAX_HIGH_CONFIDENCE_INPUTS ||
     outputCount > MAX_HIGH_CONFIDENCE_OUTPUTS ||
-    hasEarlyReturn
+    hasEarlyReturn ||
+    flow.hasThisReference
   ) {
     return 'medium';
   }
@@ -108,6 +109,13 @@ function detectIssues(flow: VariableFlowAnalysis): ExtractionIssue[] {
     });
   }
 
+  if (flow.hasThisReference) {
+    issues.push({
+      type: 'this-reference',
+      description: 'Block references `this` which complicates extraction',
+    });
+  }
+
   return issues;
 }
 
@@ -131,6 +139,11 @@ function generateSuggestions(issues: ExtractionIssue[]): string[] {
       case 'early-return':
         suggestions.push(
           'Consider restructuring to avoid early returns, or handle them explicitly'
+        );
+        break;
+      case 'this-reference':
+        suggestions.push(
+          'Block references `this` — extracted function will need `.call(this)` or accept the instance as a parameter'
         );
         break;
     }

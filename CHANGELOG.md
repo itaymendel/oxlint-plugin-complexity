@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Detect `this` references in extraction candidates and flag as medium-confidence issue.
 - Detect mutating method calls (`push`, `sort`, `set`, `delete`, etc.) as variable mutations in extraction analysis.
 - Strengthen extraction tests: replace weak/guarded assertions with exact values and rewrite inline fixtures that produced zero candidates.
 - Fix `hasEarlyReturn` to use AST-based detection.

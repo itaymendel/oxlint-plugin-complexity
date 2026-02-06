@@ -321,6 +321,16 @@ function hasEarlyReturn(candidate: ExtractionCandidate, functionNode: ESTreeNode
   return returnLine < candidate.endLine - 1;
 }
 
+function detectThisReferences(candidate: ExtractionCandidate, functionNode: ESTreeNode): boolean {
+  let found = false;
+  walkInRange(functionNode, candidate.startLine, candidate.endLine, (n) => {
+    if (n.type === 'ThisExpression') {
+      found = true;
+    }
+  });
+  return found;
+}
+
 function deduplicateMutations(mutationSets: MutationInfo[][]): MutationInfo[] {
   const seen = new Set<string>();
   const result: MutationInfo[] = [];
@@ -377,5 +387,6 @@ export function analyzeVariableFlow(
     mutations,
     closures,
     hasEarlyReturn: hasEarlyReturn(candidate, functionNode),
+    hasThisReference: detectThisReferences(candidate, functionNode),
   };
 }
