@@ -6,7 +6,7 @@
 import { walk } from 'estree-walker';
 import type { Node as EstreeWalkerNode } from 'estree-walker';
 import type { ESTreeNode } from '#src/types.js';
-import type { Scope, ScopeManager, Variable, Reference, Definition } from 'oxlint';
+import type { Scope, ScopeManager, Variable, Reference, Definition } from 'oxlint/plugins';
 
 interface IdentifierNode extends ESTreeNode {
   name: string;

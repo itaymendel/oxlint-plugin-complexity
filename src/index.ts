@@ -1,4 +1,4 @@
-import { definePlugin } from 'oxlint';
+import { definePlugin } from 'oxlint/plugins';
 import { maxCyclomatic, maxCognitive } from './rules.js';
 
 // Re-export types for library users
