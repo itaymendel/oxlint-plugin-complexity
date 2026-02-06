@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Strengthen extraction tests: replace weak/guarded assertions with exact values and rewrite inline fixtures that produced zero candidates.
 - Fix `hasEarlyReturn` to use AST-based detection.
 - Fix `suggestFunctionName` producing incorrect names; replaced with `"extracted"` placeholder.
 
