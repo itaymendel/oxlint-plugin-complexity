@@ -5,7 +5,7 @@ import { createCyclomaticVisitor } from '#src/cyclomatic.js';
 import { createCognitiveVisitor } from '#src/cognitive/visitor.js';
 import { getFunctionName as getProductionFunctionName } from '#src/utils.js';
 import type { ESTreeNode, FunctionNode, ComplexityResult, Context } from '#src/types.js';
-import type { ScopeManager } from 'oxlint';
+import type { ScopeManager } from 'oxlint/plugins';
 import { analyzeScope } from './test-scope-analyzer.js';
 
 /**

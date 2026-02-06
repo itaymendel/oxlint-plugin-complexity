@@ -58,7 +58,7 @@ function hasJsxReturn(node: BlockStatementNode): boolean {
   if (!node?.body) return false;
 
   return node.body.some(
-    (statement) =>
+    (statement: ESTreeNode) =>
       checkReturnStatement(statement) ||
       checkBodyBlock(statement) ||
       checkConsequentBlock(statement)
