@@ -66,9 +66,13 @@ function detectIssues(flow: VariableFlowAnalysis): ExtractionIssue[] {
   const issues: ExtractionIssue[] = [];
 
   for (const mutation of flow.mutations) {
+    const desc =
+      mutation.mutationType === 'method-call'
+        ? `Mutates external variable '${mutation.variable.name}' via method call`
+        : `Mutates external variable '${mutation.variable.name}'`;
     issues.push({
       type: 'mutation',
-      description: `Mutates external variable '${mutation.variable.name}'`,
+      description: desc,
       line: mutation.mutationLine,
       variable: mutation.variable.name,
     });

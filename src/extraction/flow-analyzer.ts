@@ -35,17 +35,18 @@ function getWritesInRange(
     .map((ref) => ({ line: ref.line, type: ref.type as 'write' | 'readwrite' }));
 }
 
-function detectMutations(
+function isDeclaredInRange(variable: VariableInfo, startLine: number, endLine: number): boolean {
+  return variable.declarationLine >= startLine && variable.declarationLine <= endLine;
+}
+
+function detectDirectMutations(
   candidate: ExtractionCandidate,
   variables: Map<string, VariableInfo>
 ): MutationInfo[] {
   const mutations: MutationInfo[] = [];
 
   for (const variable of variables.values()) {
-    const declaredInRange =
-      variable.declarationLine >= candidate.startLine &&
-      variable.declarationLine <= candidate.endLine;
-    if (declaredInRange) continue;
+    if (isDeclaredInRange(variable, candidate.startLine, candidate.endLine)) continue;
 
     const writes = getWritesInRange(variable, candidate.startLine, candidate.endLine);
     for (const write of writes) {
@@ -60,12 +61,10 @@ function detectMutations(
   return mutations;
 }
 
-/** Check if a node is a closure (function expression or arrow function) */
 function isClosureNode(node: ESTreeNode): boolean {
   return node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression';
 }
 
-/** Find the enclosing closure within the candidate range, if any */
 function findEnclosingClosure(
   startNode: ESTreeNode | null | undefined,
   candidate: ExtractionCandidate
@@ -84,11 +83,6 @@ function findEnclosingClosure(
   return null;
 }
 
-/** Check if a reference is within the candidate range */
-function isRefInRange(ref: { line: number }, candidate: ExtractionCandidate): boolean {
-  return ref.line >= candidate.startLine && ref.line <= candidate.endLine;
-}
-
 function detectClosures(
   candidate: ExtractionCandidate,
   variables: Map<string, VariableInfo>
@@ -99,7 +93,7 @@ function detectClosures(
     if (!variable.isMutable || variable.declarationLine >= candidate.startLine) continue;
 
     for (const ref of variable.references) {
-      if (!isRefInRange(ref, candidate)) continue;
+      if (ref.line < candidate.startLine || ref.line > candidate.endLine) continue;
 
       const closure = findEnclosingClosure(ref.node.parent, candidate);
       if (closure) {
@@ -138,20 +132,31 @@ function isOutsideRange(n: ESTreeNode, startLine: number, endLine: number): bool
   return !!n.loc && (n.loc.end.line < startLine || n.loc.start.line > endLine);
 }
 
-function isReturnInRange(n: ESTreeNode, startLine: number, endLine: number): boolean {
-  return (
-    n.type === 'ReturnStatement' &&
-    !!n.loc &&
-    n.loc.start.line >= startLine &&
-    n.loc.start.line <= endLine
-  );
+function getNodeProp(n: ESTreeNode, key: string): unknown {
+  return (n as unknown as Record<string, unknown>)[key];
 }
 
-/** Walk AST child properties, invoking `visit` on each child node. */
+/**
+ * Walk a MemberExpression chain (e.g. `a.b.c.d`) to its root Identifier.
+ * Returns null for non-Identifier roots (e.g. `getObj().prop`).
+ */
+function resolveRootIdentifier(node: ESTreeNode): string | null {
+  let current: ESTreeNode = node;
+  while (current.type === 'MemberExpression') {
+    const obj = getNodeProp(current, 'object');
+    if (!isNodeLike(obj)) return null;
+    current = obj;
+  }
+  if (current.type === 'Identifier') {
+    return getNodeProp(current, 'name') as string;
+  }
+  return null;
+}
+
 function walkChildren(n: ESTreeNode, visit: (child: ESTreeNode) => void): void {
   for (const key of Object.keys(n)) {
     if (SKIP_WALK_KEYS.has(key)) continue;
-    const child = (n as unknown as Record<string, unknown>)[key];
+    const child = getNodeProp(n, key);
     if (Array.isArray(child)) {
       for (const item of child) {
         if (isNodeLike(item)) visit(item);
@@ -162,6 +167,127 @@ function walkChildren(n: ESTreeNode, visit: (child: ESTreeNode) => void): void {
   }
 }
 
+function walkInRange(
+  root: ESTreeNode,
+  startLine: number,
+  endLine: number,
+  visitor: (n: ESTreeNode) => void
+): void {
+  function walk(n: ESTreeNode): void {
+    if (isOutsideRange(n, startLine, endLine)) return;
+    if (n !== root && NESTED_FUNCTION_TYPES.has(n.type)) return;
+    visitor(n);
+    walkChildren(n, walk);
+  }
+  walk(root);
+}
+
+/**
+ * Resolve a MemberExpression root to a variable declared outside the candidate range.
+ * Returns null if the root is not an identifier, unknown, or declared within range.
+ */
+function findExternalVariable(
+  memberExpr: ESTreeNode,
+  variables: Map<string, VariableInfo>,
+  startLine: number,
+  endLine: number
+): VariableInfo | null {
+  const rootName = resolveRootIdentifier(memberExpr);
+  if (!rootName) return null;
+  const variable = variables.get(rootName);
+  if (!variable || isDeclaredInRange(variable, startLine, endLine)) return null;
+  return variable;
+}
+
+const MUTATING_METHODS = new Set([
+  // Array
+  'push',
+  'pop',
+  'shift',
+  'unshift',
+  'splice',
+  'sort',
+  'reverse',
+  'fill',
+  'copyWithin',
+  // Map / Set
+  'set',
+  'add',
+  'delete',
+  'clear',
+]);
+
+function checkPropertyAssignment(
+  n: ESTreeNode,
+  variables: Map<string, VariableInfo>,
+  startLine: number,
+  endLine: number
+): MutationInfo | null {
+  const left = getNodeProp(n, 'left');
+  if (!isNodeLike(left) || left.type !== 'MemberExpression') return null;
+  const variable = findExternalVariable(left, variables, startLine, endLine);
+  if (!variable) return null;
+  return { variable, mutationLine: n.loc?.start.line ?? 0, mutationType: 'assignment' };
+}
+
+function checkPropertyUpdate(
+  n: ESTreeNode,
+  variables: Map<string, VariableInfo>,
+  startLine: number,
+  endLine: number
+): MutationInfo | null {
+  const arg = getNodeProp(n, 'argument');
+  if (!isNodeLike(arg) || arg.type !== 'MemberExpression') return null;
+  const variable = findExternalVariable(arg, variables, startLine, endLine);
+  if (!variable) return null;
+  return { variable, mutationLine: n.loc?.start.line ?? 0, mutationType: 'increment' };
+}
+
+function checkMethodCallMutation(
+  n: ESTreeNode,
+  variables: Map<string, VariableInfo>,
+  startLine: number,
+  endLine: number
+): MutationInfo | null {
+  const callee = getNodeProp(n, 'callee');
+  if (!isNodeLike(callee) || callee.type !== 'MemberExpression') return null;
+  const prop = getNodeProp(callee, 'property');
+  if (!isNodeLike(prop) || prop.type !== 'Identifier') return null;
+  const methodName = getNodeProp(prop, 'name') as string;
+  if (!MUTATING_METHODS.has(methodName)) return null;
+  const variable = findExternalVariable(callee, variables, startLine, endLine);
+  if (!variable) return null;
+  return { variable, mutationLine: n.loc?.start.line ?? 0, mutationType: 'method-call' };
+}
+
+const AST_MUTATION_CHECKERS: Record<string, typeof checkPropertyAssignment> = {
+  AssignmentExpression: checkPropertyAssignment,
+  UpdateExpression: checkPropertyUpdate,
+  CallExpression: checkMethodCallMutation,
+};
+
+/**
+ * Detect property assignments (obj.x = ...), update expressions (obj.x++),
+ * and mutating method calls (arr.push(...)) on variables declared outside the candidate range.
+ */
+function detectAstMutations(
+  candidate: ExtractionCandidate,
+  variables: Map<string, VariableInfo>,
+  functionNode: ESTreeNode
+): MutationInfo[] {
+  const mutations: MutationInfo[] = [];
+  const { startLine, endLine } = candidate;
+
+  walkInRange(functionNode, startLine, endLine, (n) => {
+    const checker = AST_MUTATION_CHECKERS[n.type];
+    if (!checker) return;
+    const mutation = checker(n, variables, startLine, endLine);
+    if (mutation) mutations.push(mutation);
+  });
+
+  return mutations;
+}
+
 function collectReturnStatements(
   node: ESTreeNode,
   startLine: number,
@@ -169,19 +295,17 @@ function collectReturnStatements(
 ): ESTreeNode[] {
   const returns: ESTreeNode[] = [];
 
-  function walk(n: ESTreeNode | null | undefined): void {
-    if (!isNodeLike(n)) return;
-    if (isOutsideRange(n, startLine, endLine)) return;
-    if (n !== node && NESTED_FUNCTION_TYPES.has(n.type)) return;
-
-    if (isReturnInRange(n, startLine, endLine)) {
+  walkInRange(node, startLine, endLine, (n) => {
+    if (
+      n.type === 'ReturnStatement' &&
+      n.loc &&
+      n.loc.start.line >= startLine &&
+      n.loc.start.line <= endLine
+    ) {
       returns.push(n);
     }
+  });
 
-    walkChildren(n, walk);
-  }
-
-  walk(node);
   return returns;
 }
 
@@ -197,6 +321,21 @@ function hasEarlyReturn(candidate: ExtractionCandidate, functionNode: ESTreeNode
   return returnLine < candidate.endLine - 1;
 }
 
+function deduplicateMutations(mutationSets: MutationInfo[][]): MutationInfo[] {
+  const seen = new Set<string>();
+  const result: MutationInfo[] = [];
+  for (const set of mutationSets) {
+    for (const m of set) {
+      const key = `${m.variable.name}:${m.mutationLine}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(m);
+      }
+    }
+  }
+  return result;
+}
+
 export function analyzeVariableFlow(
   candidate: ExtractionCandidate,
   variables: Map<string, VariableInfo>,
@@ -208,16 +347,14 @@ export function analyzeVariableFlow(
 
   for (const variable of variables.values()) {
     const declaredBefore = variable.declarationLine < candidate.startLine;
-    const declaredInRange =
-      variable.declarationLine >= candidate.startLine &&
-      variable.declarationLine <= candidate.endLine;
+    const declaredInside = isDeclaredInRange(variable, candidate.startLine, candidate.endLine);
 
     const readsInRange = hasReadsInRange(variable, candidate.startLine, candidate.endLine);
     const usedAfterRange = isUsedAfter(variable, candidate.endLine);
 
     if (declaredBefore && readsInRange) {
       inputs.push(variable);
-    } else if (declaredInRange) {
+    } else if (declaredInside) {
       if (usedAfterRange) {
         outputs.push(variable);
       } else {
@@ -226,7 +363,11 @@ export function analyzeVariableFlow(
     }
   }
 
-  const mutations = detectMutations(candidate, variables);
+  const mutations = deduplicateMutations([
+    detectDirectMutations(candidate, variables),
+    detectAstMutations(candidate, variables, functionNode),
+  ]);
+
   const closures = detectClosures(candidate, variables);
 
   return {
