@@ -9,7 +9,7 @@ import { getFunctionName, createComplexityPoint } from './utils.js';
 
 interface VisitorConfig<T extends FunctionScope> {
   createScope: (node: ESTreeNode, name: string | null) => T;
-  onEnterFunction?: (scope: T, parentScope: T | undefined, node: ESTreeNode) => void;
+  onEnterFunction?: (parentScope: T | undefined, node: ESTreeNode, scope: T) => void;
   onExitFunction?: (scope: T, node: ESTreeNode) => void;
   onComplexityCalculated: (result: ComplexityResult, node: ESTreeNode) => void;
 }
@@ -57,7 +57,7 @@ export function createComplexityVisitor<T extends FunctionScope>(
     scopeStack.push(scope);
 
     if (config.onEnterFunction) {
-      config.onEnterFunction(scope, parentScope, node);
+      config.onEnterFunction(parentScope, node, scope);
     }
   }
 

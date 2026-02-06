@@ -165,7 +165,7 @@ function createCognitiveVisitorCore<TResult extends ComplexityResult>(
       hasRecursiveCall: false,
     }),
 
-    onEnterFunction(_scope, parentScope, node) {
+    onEnterFunction(parentScope, node) {
       if (globalFunctionNestingLevel === 0) {
         options.onEnterTopLevelFunction?.(node);
       }

@@ -62,10 +62,7 @@ function generateSignature(
   return `${functionName}(${params}): ${returnType}`;
 }
 
-function detectIssues(
-  _candidate: ExtractionCandidate,
-  flow: VariableFlowAnalysis
-): ExtractionIssue[] {
+function detectIssues(flow: VariableFlowAnalysis): ExtractionIssue[] {
   const issues: ExtractionIssue[] = [];
 
   for (const mutation of flow.mutations) {
@@ -150,7 +147,7 @@ export function createExtractionSuggestion(
   flow: VariableFlowAnalysis
 ): ExtractionSuggestion {
   const confidence = determineConfidence(flow);
-  const issues = detectIssues(candidate, flow);
+  const issues = detectIssues(flow);
   const actionSuggestions = generateSuggestions(issues);
 
   const inputs = flow.inputs.map(toTypedVariable);
