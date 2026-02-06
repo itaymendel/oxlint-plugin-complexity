@@ -1,0 +1,39 @@
+---
+// @complexity fetchData:cyclomatic=4,cognitive=4
+interface ApiResponse {
+  data: unknown[];
+  error?: string;
+}
+
+async function fetchData(url: string): Promise<ApiResponse> {
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { data: [], error: 'Not found' };
+      }
+      return { data: [], error: 'Request failed' };
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch {
+    return { data: [], error: 'Network error' };
+  }
+}
+
+const result = await fetchData('/api/items');
+---
+
+<html>
+  <body>
+    {result.error ? (
+      <p class="error">{result.error}</p>
+    ) : (
+      <ul>
+        {result.data.map((item) => <li>{JSON.stringify(item)}</li>)}
+      </ul>
+    )}
+  </body>
+</html>

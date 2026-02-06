@@ -7,7 +7,8 @@ Cyclomatic and cognitive complexity rules for [oxlint](https://oxc.rs/docs/guide
 - Cyclomatic and cognitive complexity analysis.
 - Actionable error messages with complexity breakdown.
 - [Programmatic API](./src/index.ts) for custom tooling
-- Supports `.js` `.mjs` `.cjs` `.ts` `.tsx` `.jsx` `.vue` (extracts `<script>` blocks only)
+- **Framework support:** React, Vue, Angular, Svelte, Astro, Solid, Qwik
+- **File types:** `.js` `.mjs` `.cjs` `.ts` `.tsx` `.jsx` `.vue` `.svelte` `.astro`
 
 > **Note:** Only cognitive complexity tracks nesting depth, which enables more actionable suggestions, so refactoring tips available only there.
 
