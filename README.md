@@ -99,7 +99,7 @@ The plugin detects common complexity patterns and provides actionable tips. All 
 }
 ```
 
-#### Extraction Suggestions (Experimental)
+#### Extraction Suggestions
 
 Enable `enableExtraction` to get refactoring suggestions for complex functions. Analyzes variable flow to identify extractable code blocks and potential issues.
 
@@ -142,6 +142,16 @@ Smart extraction suggestions:
 Inputs: config: Config, results: number[]
 Suggested: processBlock(config: Config, results: number[]): void
 ```
+
+##### Known Limitations
+
+Extraction suggestions are best-effort heuristics based on static analysis. While they aim to be helpful, they may not always produce perfect results:
+
+- **Global/module-scoped variables** are not tracked by the variable flow analysis, which may lead to incorrect suggestions when extracting code that depends on or modifies globals.
+- **Complex data flows** involving closures, dynamic property access, or indirect mutations may not be fully captured.
+- Suggestions marked as "high confidence" indicate that no obvious issues were detected, but manual review is still recommended before applying any extraction.
+
+When in doubt, test the extracted code thoroughly to ensure correctness.
 
 ---
 
