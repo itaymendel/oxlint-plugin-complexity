@@ -8,6 +8,7 @@ import type {
 } from './types.js';
 
 const MAX_HIGH_CONFIDENCE_INPUTS = 3;
+export const PLACEHOLDER_FUNCTION_NAME = 'extracted';
 const MAX_HIGH_CONFIDENCE_OUTPUTS = 1;
 const MAX_MEDIUM_CONFIDENCE_INPUTS = 5;
 const MAX_MEDIUM_CONFIDENCE_OUTPUTS = 2;
@@ -39,16 +40,6 @@ function determineConfidence(flow: VariableFlowAnalysis): ExtractionConfidence {
   }
 
   return 'high';
-}
-
-function suggestFunctionName(originalName: string, candidate: ExtractionCandidate): string {
-  const baseName = originalName.replace(/^(get|set|is|has|can|do|handle|process)/i, '');
-
-  if (baseName && baseName !== originalName) {
-    return `process${baseName}`;
-  }
-
-  return `processLines${candidate.startLine}To${candidate.endLine}`;
 }
 
 function generateSignature(
@@ -156,8 +147,7 @@ function toTypedVariable(variable: { name: string; typeAnnotation?: string }): T
 
 export function createExtractionSuggestion(
   candidate: ExtractionCandidate,
-  flow: VariableFlowAnalysis,
-  originalFunctionName: string
+  flow: VariableFlowAnalysis
 ): ExtractionSuggestion {
   const confidence = determineConfidence(flow);
   const issues = detectIssues(candidate, flow);
@@ -168,8 +158,7 @@ export function createExtractionSuggestion(
 
   let suggestedSignature: string | undefined;
   if (confidence !== 'low' && issues.length === 0) {
-    const suggestedName = suggestFunctionName(originalFunctionName, candidate);
-    suggestedSignature = generateSignature(suggestedName, inputs, outputs);
+    suggestedSignature = generateSignature(PLACEHOLDER_FUNCTION_NAME, inputs, outputs);
   }
 
   return {

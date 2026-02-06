@@ -5,6 +5,7 @@ import type { ESTreeNode, ComplexityPoint } from '../types.js';
 import type { ExtractionSuggestion, ExtractionOptions, VariableInfo } from './types.js';
 import { findExtractionCandidates } from './boundary-detector.js';
 import { analyzeVariableFlow } from './flow-analyzer.js';
+export { PLACEHOLDER_FUNCTION_NAME } from './suggestion-generator.js';
 import { createExtractionSuggestion } from './suggestion-generator.js';
 
 const DEFAULT_MIN_COMPLEXITY_MULTIPLIER = 1.5;
@@ -31,7 +32,7 @@ export function analyzeExtractionOpportunities(
 
   for (const candidate of candidates) {
     const flow = analyzeVariableFlow(candidate, variables, functionNode, functionEndLine);
-    const suggestion = createExtractionSuggestion(candidate, flow, functionName);
+    const suggestion = createExtractionSuggestion(candidate, flow);
     suggestions.push(suggestion);
   }
 

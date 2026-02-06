@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix `hasEarlyReturn` to use AST-based detection.
+- Fix `suggestFunctionName` producing incorrect names; replaced with `"extracted"` placeholder.
 
 ## [0.3.2] - 2026-02-01
 
