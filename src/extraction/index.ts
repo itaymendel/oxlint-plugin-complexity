@@ -31,7 +31,7 @@ export function analyzeExtractionOpportunities(
 
   for (const candidate of candidates) {
     const flow = analyzeVariableFlow(candidate, variables, functionNode, functionEndLine);
-    const suggestion = createExtractionSuggestion(candidate, flow, functionName);
+    const suggestion = createExtractionSuggestion(candidate, flow);
     suggestions.push(suggestion);
   }
 
