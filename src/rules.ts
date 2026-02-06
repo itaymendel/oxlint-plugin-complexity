@@ -7,6 +7,7 @@ import type {
   ComplexityResult,
   VisitorWithHooks,
   ESTreeNode,
+  MaxCognitiveOptions,
 } from './types.js';
 import {
   getFunctionName,
@@ -188,15 +189,7 @@ export const maxCognitive: Rule = defineRule({
 
     return {
       before() {
-        const options = (context.options[0] || {}) as {
-          max?: number;
-          enableExtraction?: boolean;
-          extractionMultiplier?: number;
-          minExtractionPercentage?: number;
-          nestingTipThreshold?: number;
-          elseIfChainThreshold?: number;
-          logicalOperatorThreshold?: number;
-        };
+        const options = (context.options[0] || {}) as MaxCognitiveOptions;
         maxComplexity = options.max ?? DEFAULT_MAX;
         enableExtraction = options.enableExtraction ?? false;
 

@@ -53,4 +53,10 @@ export interface MaxCyclomaticOptions {
 
 export interface MaxCognitiveOptions {
   max?: number;
+  enableExtraction?: boolean;
+  extractionMultiplier?: number;
+  minExtractionPercentage?: number;
+  nestingTipThreshold?: number;
+  elseIfChainThreshold?: number;
+  logicalOperatorThreshold?: number;
 }
