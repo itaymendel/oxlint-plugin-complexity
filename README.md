@@ -145,7 +145,7 @@ Inputs: config: Config, results: number[]
 Suggested: processBlock(config: Config, results: number[]): void
 ```
 
-##### Known Limitations
+#### Known Limitations
 
 Extraction suggestions use static analysis heuristics and may miss:
 

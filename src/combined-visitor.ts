@@ -44,7 +44,7 @@ export interface CombinedComplexityResult {
  * Create a combined visitor that calculates both cyclomatic and cognitive complexity
  * in a single AST walk.
  */
-// eslint-disable-next-line complexity/max-cognitive -- Visitor factory pattern requires many nested handlers
+// eslint-disable-next-line complexity/complexity -- Visitor factory pattern requires many nested handlers
 export function createCombinedComplexityVisitor(
   context: Context,
   onComplexityCalculated: (result: CombinedComplexityResult, node: ESTreeNode) => void

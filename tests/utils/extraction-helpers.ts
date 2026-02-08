@@ -9,6 +9,7 @@ import {
   type ComplexityResultWithVariables,
 } from '#src/cognitive/visitor.js';
 import { analyzeVariableFlow } from '#src/extraction/flow-analyzer.js';
+import { extractConstructFromMessage } from '#src/utils.js';
 import { createMockContext, walkWithVisitor, parseAndPrepareAst } from './test-helpers.js';
 
 export interface ExtendedResult extends ComplexityResult {
@@ -59,12 +60,35 @@ export function buildCandidateFromResult(result: ExtendedResult): ExtractionCand
     complexity: result.total,
     complexityPercentage: 50,
     points: result.points,
-    constructs: result.points.map((p) => p.construct),
+    constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
+  };
+}
+
+/**
+ * Build an ExtractionCandidate for a specific range within a function.
+ * @param result - The extended analysis result containing the function node and complexity data
+ * @param startOffset - Offset from function start line (e.g., 2 to skip first 2 lines)
+ * @param endOffset - Offset from function end line (e.g., -1 to exclude last line)
+ */
+export function buildCandidateForRange(
+  result: ExtendedResult,
+  startOffset: number,
+  endOffset: number
+): ExtractionCandidate {
+  const funcStart = result.node.loc!.start.line;
+  const funcEnd = result.node.loc!.end.line;
+
+  return {
+    startLine: funcStart + startOffset,
+    endLine: funcEnd + endOffset,
+    complexity: result.total,
+    complexityPercentage: 50,
+    points: result.points,
+    constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
   };
 }
 
 export function analyzeFlowFromResult(result: ExtendedResult): VariableFlowAnalysis {
   const candidate = buildCandidateFromResult(result);
-  const functionEndLine = result.node.loc!.end.line;
-  return analyzeVariableFlow(candidate, result.variables, result.node, functionEndLine);
+  return analyzeVariableFlow(candidate, result.variables, result.node);
 }

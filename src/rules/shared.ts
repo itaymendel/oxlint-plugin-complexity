@@ -105,8 +105,12 @@ export function normalizeCognitiveCategory(category: string): string {
 }
 
 const MIGRATION_URL = 'https://github.com/itaymendel/oxlint-plugin-complexity#migration-to-v1';
+const warnedDeprecations = new Set<string>();
 
 export function warnDeprecated(ruleName: string): void {
+  if (warnedDeprecations.has(ruleName)) return;
+  warnedDeprecations.add(ruleName);
+
   // eslint-disable-next-line no-console -- Intentional deprecation warning
   console.warn(`
 DEPRECATION WARNING: complexity/${ruleName}

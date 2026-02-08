@@ -13,6 +13,7 @@ import {
   type ExtendedResult,
   calculateCognitiveWithTracking,
   analyzeFlowFromResult,
+  buildCandidateForRange,
 } from './utils/extraction-helpers.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -154,16 +155,7 @@ describe('Smart Extraction Detection', () => {
 
       const results = calculateCognitiveWithTracking(code, 'test.js');
       const result = results.get('outer')!;
-      const funcStart = result.node.loc!.start.line;
-      const funcEnd = result.node.loc!.end.line;
-      const candidate: ExtractionCandidate = {
-        startLine: funcStart + 2,
-        endLine: funcEnd - 1,
-        complexity: result.total,
-        complexityPercentage: 50,
-        points: result.points,
-        constructs: result.points.map((p) => p.construct),
-      };
+      const candidate = buildCandidateForRange(result, 2, -1);
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
       expect(flow.hasThisReference).toBe(true);
@@ -187,16 +179,7 @@ describe('Smart Extraction Detection', () => {
 
       const results = calculateCognitiveWithTracking(code, 'test.js');
       const result = results.get('outer')!;
-      const funcStart = result.node.loc!.start.line;
-      const funcEnd = result.node.loc!.end.line;
-      const candidate: ExtractionCandidate = {
-        startLine: funcStart + 2,
-        endLine: funcEnd - 1,
-        complexity: result.total,
-        complexityPercentage: 50,
-        points: result.points,
-        constructs: result.points.map((p) => p.construct),
-      };
+      const candidate = buildCandidateForRange(result, 2, -1);
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
       expect(flow.hasThisReference).toBe(false);
@@ -220,16 +203,7 @@ describe('Smart Extraction Detection', () => {
 
       const results = calculateCognitiveWithTracking(code, 'test.js');
       const result = results.get('outer')!;
-      const funcStart = result.node.loc!.start.line;
-      const funcEnd = result.node.loc!.end.line;
-      const candidate: ExtractionCandidate = {
-        startLine: funcStart + 2,
-        endLine: funcEnd - 1,
-        complexity: result.total,
-        complexityPercentage: 50,
-        points: result.points,
-        constructs: result.points.map((p) => p.construct),
-      };
+      const candidate = buildCandidateForRange(result, 2, -1);
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
       expect(flow.hasThisReference).toBe(false);
@@ -252,16 +226,7 @@ describe('Smart Extraction Detection', () => {
 
       const results = calculateCognitiveWithTracking(code, 'test.js');
       const result = results.get('outer')!;
-      const funcStart = result.node.loc!.start.line;
-      const funcEnd = result.node.loc!.end.line;
-      const candidate: ExtractionCandidate = {
-        startLine: funcStart + 2,
-        endLine: funcEnd - 1,
-        complexity: result.total,
-        complexityPercentage: 50,
-        points: result.points,
-        constructs: result.points.map((p) => p.construct),
-      };
+      const candidate = buildCandidateForRange(result, 2, -1);
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
       expect(flow.hasThisReference).toBe(false);
@@ -285,16 +250,7 @@ describe('Smart Extraction Detection', () => {
 
       const results = calculateCognitiveWithTracking(code, 'test.js');
       const result = results.get('outer')!;
-      const funcStart = result.node.loc!.start.line;
-      const funcEnd = result.node.loc!.end.line;
-      const candidate: ExtractionCandidate = {
-        startLine: funcStart + 2,
-        endLine: funcEnd - 1,
-        complexity: result.total,
-        complexityPercentage: 50,
-        points: result.points,
-        constructs: result.points.map((p) => p.construct),
-      };
+      const candidate = buildCandidateForRange(result, 2, -1);
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
       const suggestion = createExtractionSuggestion(candidate, flow);
 

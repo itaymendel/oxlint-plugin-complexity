@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { ExtractionCandidate } from '#src/extraction/types.js';
 import { analyzeVariableFlow } from '#src/extraction/flow-analyzer.js';
+import { extractConstructFromMessage } from '#src/utils.js';
 import { calculateCognitiveWithTracking } from './utils/extraction-helpers.js';
 
 describe('Smart Extraction Detection', () => {
@@ -33,7 +34,7 @@ describe('Smart Extraction Detection', () => {
         complexity: result.total,
         complexityPercentage: 50,
         points: result.points,
-        constructs: result.points.map((p) => p.construct),
+        constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
       };
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
@@ -69,7 +70,7 @@ describe('Smart Extraction Detection', () => {
         complexity: result.total,
         complexityPercentage: 50,
         points: result.points,
-        constructs: result.points.map((p) => p.construct),
+        constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
       };
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
@@ -105,7 +106,7 @@ describe('Smart Extraction Detection', () => {
         complexity: result.total,
         complexityPercentage: 50,
         points: result.points,
-        constructs: result.points.map((p) => p.construct),
+        constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
       };
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
@@ -141,7 +142,7 @@ describe('Smart Extraction Detection', () => {
         complexity: result.total,
         complexityPercentage: 50,
         points: result.points,
-        constructs: result.points.map((p) => p.construct),
+        constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
       };
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
@@ -179,7 +180,7 @@ describe('Smart Extraction Detection', () => {
         complexity: result.total,
         complexityPercentage: 50,
         points: result.points,
-        constructs: result.points.map((p) => p.construct),
+        constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
       };
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
@@ -217,7 +218,7 @@ describe('Smart Extraction Detection', () => {
         complexity: result.total,
         complexityPercentage: 50,
         points: result.points,
-        constructs: result.points.map((p) => p.construct),
+        constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
       };
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
@@ -253,7 +254,7 @@ describe('Smart Extraction Detection', () => {
         complexity: result.total,
         complexityPercentage: 50,
         points: result.points,
-        constructs: result.points.map((p) => p.construct),
+        constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
       };
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
@@ -289,7 +290,7 @@ describe('Smart Extraction Detection', () => {
         complexity: result.total,
         complexityPercentage: 50,
         points: result.points,
-        constructs: result.points.map((p) => p.construct),
+        constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
       };
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
@@ -325,7 +326,7 @@ describe('Smart Extraction Detection', () => {
         complexity: result.total,
         complexityPercentage: 50,
         points: result.points,
-        constructs: result.points.map((p) => p.construct),
+        constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
       };
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
@@ -361,7 +362,7 @@ describe('Smart Extraction Detection', () => {
         complexity: result.total,
         complexityPercentage: 50,
         points: result.points,
-        constructs: result.points.map((p) => p.construct),
+        constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
       };
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
@@ -398,7 +399,7 @@ describe('Smart Extraction Detection', () => {
         complexity: result.total,
         complexityPercentage: 50,
         points: result.points,
-        constructs: result.points.map((p) => p.construct),
+        constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
       };
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
@@ -434,7 +435,7 @@ describe('Smart Extraction Detection', () => {
         complexity: result.total,
         complexityPercentage: 50,
         points: result.points,
-        constructs: result.points.map((p) => p.construct),
+        constructs: result.points.map((p) => extractConstructFromMessage(p.message)),
       };
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 

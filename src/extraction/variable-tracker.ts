@@ -30,7 +30,7 @@ function getTypeAnnotation(node: ESTreeNode): string | undefined {
 /**
  * Convert a TypeScript type node to a human-readable string.
  */
-// eslint-disable-next-line complexity/max-cyclomatic -- type mapping switch
+// eslint-disable-next-line complexity/complexity -- type mapping switch
 function getTypeString(node: ESTreeNode): string {
   switch (node.type) {
     case 'TSStringKeyword':
