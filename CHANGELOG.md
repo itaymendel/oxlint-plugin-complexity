@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Performance optimization: `minLines` option to skip complexity analysis for small functions. Default: 10 lines.
+
+## [1.0.0-rc.1] - 2026-02-08
+
+### Added
+
+- **New `complexity/complexity` rule** - Optimized rule that checks both cyclomatic and cognitive complexity in a single AST walk (17% faster than separate rules)
+- Export extraction analysis types and functions from public API
 - Test fixtures for Svelte (`.svelte`) and Astro (`.astro`) files
 - Documented framework support: React, Vue, Angular, Svelte, Astro, Solid, Qwik
 
@@ -16,11 +24,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Clean up unused parameters left over from v0.3.2 refactoring across internal APIs
 
+### Deprecated
+
+- `complexity/max-cyclomatic` - Use `complexity/complexity` instead
+- `complexity/max-cognitive` - Use `complexity/complexity` instead
+
 ### Fixed
 
+- Detect `this` references in extraction candidates and flag as medium-confidence issue.
+- Detect mutating method calls (`push`, `sort`, `set`, `delete`, etc.) as variable mutations in extraction analysis.
 - Strengthen extraction tests: replace weak/guarded assertions with exact values and rewrite inline fixtures that produced zero candidates.
 - Fix `hasEarlyReturn` to use AST-based detection.
 - Fix `suggestFunctionName` producing incorrect names; replaced with `"extracted"` placeholder.
+- Fix exported `MaxCognitiveOptions` type missing extraction and tip-threshold options added in v0.3.0.
 
 ## [0.3.2] - 2026-02-01
 
@@ -91,7 +107,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI pipeline
 - Pre-commit hooks with Husky
 
-[Unreleased]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v1.0.0-rc.1...HEAD
+[1.0.0-rc.1]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v0.3.2...v1.0.0-rc.1
 [0.3.2]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v0.2.0...v0.3.0

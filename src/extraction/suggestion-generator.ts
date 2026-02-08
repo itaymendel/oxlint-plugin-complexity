@@ -34,7 +34,8 @@ function determineConfidence(flow: VariableFlowAnalysis): ExtractionConfidence {
   if (
     inputCount > MAX_HIGH_CONFIDENCE_INPUTS ||
     outputCount > MAX_HIGH_CONFIDENCE_OUTPUTS ||
-    hasEarlyReturn
+    hasEarlyReturn ||
+    flow.hasThisReference
   ) {
     return 'medium';
   }
@@ -66,9 +67,13 @@ function detectIssues(flow: VariableFlowAnalysis): ExtractionIssue[] {
   const issues: ExtractionIssue[] = [];
 
   for (const mutation of flow.mutations) {
+    const desc =
+      mutation.mutationType === 'method-call'
+        ? `Mutates external variable '${mutation.variable.name}' via method call`
+        : `Mutates external variable '${mutation.variable.name}'`;
     issues.push({
       type: 'mutation',
-      description: `Mutates external variable '${mutation.variable.name}'`,
+      description: desc,
       line: mutation.mutationLine,
       variable: mutation.variable.name,
     });
@@ -104,6 +109,13 @@ function detectIssues(flow: VariableFlowAnalysis): ExtractionIssue[] {
     });
   }
 
+  if (flow.hasThisReference) {
+    issues.push({
+      type: 'this-reference',
+      description: 'Block references `this` which complicates extraction',
+    });
+  }
+
   return issues;
 }
 
@@ -127,6 +139,11 @@ function generateSuggestions(issues: ExtractionIssue[]): string[] {
       case 'early-return':
         suggestions.push(
           'Consider restructuring to avoid early returns, or handle them explicitly'
+        );
+        break;
+      case 'this-reference':
+        suggestions.push(
+          'Block references `this` — extracted function will need `.call(this)` or accept the instance as a parameter'
         );
         break;
     }

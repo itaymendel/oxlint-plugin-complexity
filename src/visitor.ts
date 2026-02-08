@@ -55,25 +55,17 @@ export function createComplexityVisitor<T extends FunctionScope>(
     const scope = config.createScope(node, name);
 
     scopeStack.push(scope);
-
-    if (config.onEnterFunction) {
-      config.onEnterFunction(parentScope, node, scope);
-    }
+    config.onEnterFunction?.(parentScope, node, scope);
   }
 
   function exitFunction(node: ESTreeNode): void {
-    const scope = getCurrentScope();
+    const scope = scopeStack.pop();
+    if (!scope) return;
 
-    if (scope && config.onExitFunction) {
-      config.onExitFunction(scope, node);
-    }
+    config.onExitFunction?.(scope, node);
 
-    const poppedScope = scopeStack.pop();
-
-    if (poppedScope) {
-      const total = poppedScope.points.reduce((sum, point) => sum + point.complexity, 0);
-      config.onComplexityCalculated({ total, points: poppedScope.points }, node);
-    }
+    const total = scope.points.reduce((sum, point) => sum + point.complexity, 0);
+    config.onComplexityCalculated({ total, points: scope.points }, node);
   }
 
   const baseVisitor: Partial<Visitor> = {
