@@ -1,23 +1,15 @@
 import type { ComplexityPoint } from '../types.js';
 import type { ExtractionCandidate, ExtractionOptions } from './types.js';
+import { extractConstructFromMessage } from '../utils.js';
 
 const DEFAULT_MIN_COMPLEXITY_PERCENTAGE = 30;
 const DEFAULT_MAX_COMPLEXITY_PERCENTAGE = 70; // Reject candidates covering too much of the function
 const DEFAULT_MAX_LINE_GAP = 2;
 const DEFAULT_MAX_CANDIDATES = 3;
 
-/**
- * Extract the construct type from a complexity point message.
- * Messages are in format: "+N: construct" or "+N (incl. M for nesting): construct"
- */
+/** Strip surrounding quotes from construct names like "'if'" */
 function extractConstruct(message: string): string {
-  const match = message.match(/:\s*(.+)$/);
-  if (match) {
-    const construct = match[1].trim();
-    // Remove quotes from constructs like "'if'"
-    return construct.replace(/^'|'$/g, '');
-  }
-  return 'unknown';
+  return extractConstructFromMessage(message).replace(/^'|'$/g, '');
 }
 
 function getUniqueConstructs(points: ComplexityPoint[]): string[] {

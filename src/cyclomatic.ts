@@ -4,25 +4,16 @@ import type {
   FunctionScope,
   LogicalExpressionNode,
   SwitchCaseNode,
-  IfStatementNode,
-  ForStatementNode,
-  ForInStatementNode,
-  ForOfStatementNode,
-  WhileStatementNode,
-  DoWhileStatementNode,
-  CatchClauseNode,
-  ConditionalExpressionNode,
   AssignmentExpressionNode,
   ComplexityResult,
 } from './types.js';
 import { createComplexityVisitor } from './visitor.js';
-import { BASE_FUNCTION_COMPLEXITY, LOGICAL_OPERATORS } from './utils.js';
-
-/**
- * Logical assignment operators (short-circuit assignment).
- * Only used by cyclomatic complexity.
- */
-const LOGICAL_ASSIGNMENT_OPERATORS = ['||=', '&&=', '??='] as const;
+import {
+  BASE_FUNCTION_COMPLEXITY,
+  LOGICAL_OPERATORS,
+  LOGICAL_ASSIGNMENT_OPERATORS,
+  includes,
+} from './utils.js';
 
 /**
  * Calculate cyclomatic complexity for a function body.
@@ -62,35 +53,35 @@ export function createCyclomaticVisitor(
   return {
     ...baseVisitor,
 
-    IfStatement(node: IfStatementNode): void {
+    IfStatement(node: ESTreeNode): void {
       addComplexity(node, 'if');
     },
 
-    ForStatement(node: ForStatementNode): void {
+    ForStatement(node: ESTreeNode): void {
       addComplexity(node, 'for');
     },
 
-    ForInStatement(node: ForInStatementNode): void {
+    ForInStatement(node: ESTreeNode): void {
       addComplexity(node, 'for...in');
     },
 
-    ForOfStatement(node: ForOfStatementNode): void {
+    ForOfStatement(node: ESTreeNode): void {
       addComplexity(node, 'for...of');
     },
 
-    WhileStatement(node: WhileStatementNode): void {
+    WhileStatement(node: ESTreeNode): void {
       addComplexity(node, 'while');
     },
 
-    DoWhileStatement(node: DoWhileStatementNode): void {
+    DoWhileStatement(node: ESTreeNode): void {
       addComplexity(node, 'do...while');
     },
 
-    CatchClause(node: CatchClauseNode): void {
+    CatchClause(node: ESTreeNode): void {
       addComplexity(node, 'catch');
     },
 
-    ConditionalExpression(node: ConditionalExpressionNode): void {
+    ConditionalExpression(node: ESTreeNode): void {
       addComplexity(node, 'ternary');
     },
 
@@ -102,17 +93,13 @@ export function createCyclomaticVisitor(
     },
 
     LogicalExpression(node: LogicalExpressionNode): void {
-      if (LOGICAL_OPERATORS.includes(node.operator as (typeof LOGICAL_OPERATORS)[number])) {
+      if (includes(LOGICAL_OPERATORS, node.operator)) {
         addComplexity(node, node.operator);
       }
     },
 
     AssignmentExpression(node: AssignmentExpressionNode): void {
-      if (
-        LOGICAL_ASSIGNMENT_OPERATORS.includes(
-          node.operator as (typeof LOGICAL_ASSIGNMENT_OPERATORS)[number]
-        )
-      ) {
+      if (includes(LOGICAL_ASSIGNMENT_OPERATORS, node.operator)) {
         addComplexity(node, node.operator);
       }
     },

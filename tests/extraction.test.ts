@@ -1,86 +1,16 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import type { ESTreeNode, ComplexityResult } from '#src/types.js';
-import type {
-  VariableInfo,
-  ExtractionCandidate,
-  VariableFlowAnalysis,
-} from '#src/extraction/types.js';
-import {
-  createCognitiveVisitorWithTracking,
-  type ComplexityResultWithVariables,
-} from '#src/cognitive/visitor.js';
 import {
   analyzeExtractionOpportunities,
   shouldAnalyzeExtraction,
   formatExtractionSuggestions,
-  PLACEHOLDER_FUNCTION_NAME,
 } from '#src/extraction/index.js';
-import { analyzeVariableFlow } from '#src/extraction/flow-analyzer.js';
 import { loadFixture } from './utils/fixture-loader.js';
-import { createMockContext, walkWithVisitor, parseAndPrepareAst } from './utils/test-helpers.js';
+import { type ExtendedResult, calculateCognitiveWithTracking } from './utils/extraction-helpers.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(__dirname, 'fixtures');
-
-interface ExtendedResult extends ComplexityResult {
-  functionName: string;
-  variables: Map<string, VariableInfo>;
-  node: ESTreeNode;
-}
-
-/**
- * Calculate cognitive complexity with variable tracking.
- * Uses eslint-scope for scope analysis to match oxlint's behavior in tests.
- */
-function calculateCognitiveWithTracking(
-  code: string,
-  filename: string
-): Map<string, ExtendedResult> {
-  const { program, errors } = parseAndPrepareAst(code, filename);
-  if (errors.length > 0) {
-    throw new Error(`Parse errors: ${errors.map((e) => e.message).join(', ')}`);
-  }
-
-  const results = new Map<string, ExtendedResult>();
-
-  // Create context with scope analysis enabled
-  const context = createMockContext(program);
-
-  const listener = createCognitiveVisitorWithTracking(
-    context,
-    (result: ComplexityResultWithVariables, node: ESTreeNode) => {
-      results.set(result.functionName, {
-        total: result.total,
-        points: result.points,
-        functionName: result.functionName,
-        variables: result.variables,
-        node,
-      });
-    }
-  );
-
-  walkWithVisitor(program, listener, code);
-  return results;
-}
-
-function buildCandidateFromResult(result: ExtendedResult): ExtractionCandidate {
-  return {
-    startLine: result.node.loc!.start.line,
-    endLine: result.node.loc!.end.line,
-    complexity: result.total,
-    complexityPercentage: 50,
-    points: result.points,
-    constructs: result.points.map((p) => p.construct),
-  };
-}
-
-function analyzeFlowFromResult(result: ExtendedResult): VariableFlowAnalysis {
-  const candidate = buildCandidateFromResult(result);
-  const functionEndLine = result.node.loc!.end.line;
-  return analyzeVariableFlow(candidate, result.variables, result.node, functionEndLine);
-}
 
 describe('Smart Extraction Detection', () => {
   describe('shouldAnalyzeExtraction', () => {
@@ -316,122 +246,6 @@ describe('Smart Extraction Detection', () => {
     });
   });
 
-  describe('Early Return Detection', () => {
-    let earlyReturnResults: Map<string, ExtendedResult>;
-
-    beforeAll(() => {
-      const fixture = loadFixture(join(fixturesDir, 'js/early-returns.js'), fixturesDir);
-      earlyReturnResults = calculateCognitiveWithTracking(fixture.code, 'test.js');
-    });
-
-    it('detects early returns in guard clause functions', () => {
-      const result = earlyReturnResults.get('guardClauses')!;
-      expect(result).toBeDefined();
-
-      const flow = analyzeFlowFromResult(result);
-      expect(flow.hasEarlyReturn).toBe(true);
-    });
-
-    it('detects early returns in functions with multiple exit points', () => {
-      const result = earlyReturnResults.get('multipleExitPoints')!;
-      expect(result).toBeDefined();
-
-      const flow = analyzeFlowFromResult(result);
-      expect(flow.hasEarlyReturn).toBe(true);
-    });
-
-    it('does not flag functions without return statements as having early returns', () => {
-      const code = `
-        function noReturns(items) {
-          let count = 0;
-          for (const item of items) {
-            if (item.active) {
-              for (const child of item.children || []) {
-                if (child.valid) {
-                  count++;
-                }
-              }
-            }
-          }
-          console.log(count);
-        }
-      `;
-
-      const results = calculateCognitiveWithTracking(code, 'test.js');
-      const result = results.get('noReturns')!;
-      const flow = analyzeFlowFromResult(result);
-
-      expect(flow.hasEarlyReturn).toBe(false);
-    });
-
-    it('does not flag a single return on the last line as early return', () => {
-      const code = `
-        function singleReturn(a, b) {
-          let result = 0;
-          if (a > 0) {
-            result = a + b;
-          }
-          return result;
-        }
-      `;
-
-      const results = calculateCognitiveWithTracking(code, 'test.js');
-      const result = results.get('singleReturn')!;
-      const flow = analyzeFlowFromResult(result);
-
-      expect(flow.hasEarlyReturn).toBe(false);
-    });
-
-    it('shows early-return issues in formatted output', () => {
-      const code = `
-        function processData(items, config) {
-          if (!items) return null;
-          let total = 0;
-          for (const item of items) {
-            if (item.valid) {
-              total += item.value;
-            }
-          }
-
-          const factor = config.factor || 1;
-          const adjusted = total * factor;
-          const prefix = config.prefix || '';
-
-          let output = '';
-          for (const entry of config.entries || []) {
-            if (entry.active) {
-              if (entry.value > adjusted) {
-                output += prefix + entry.label;
-              }
-            }
-          }
-          return output;
-        }
-      `;
-
-      const results = calculateCognitiveWithTracking(code, 'test.js');
-      const result = results.get('processData')!;
-
-      const suggestions = analyzeExtractionOpportunities(
-        result.node,
-        result.points,
-        result.total,
-        result.variables,
-        'processData'
-      );
-
-      expect(suggestions.length).toBe(2);
-
-      const withEarlyReturn = suggestions.find((s) =>
-        s.issues.some((i) => i.type === 'early-return')
-      );
-      expect(withEarlyReturn).toBeDefined();
-
-      const formatted = formatExtractionSuggestions(suggestions);
-      expect(formatted).toContain('early return');
-    });
-  });
-
   describe('Requirements Validation', () => {
     it('tracks variable declarations and references within function', () => {
       const code = `
@@ -563,12 +377,15 @@ describe('Smart Extraction Detection', () => {
 
       expect(suggestions.length).toBe(2);
 
-      const withSignature = suggestions.find((s) => s.suggestedSignature);
-      expect(withSignature).toBeDefined();
-      expect(withSignature!.suggestedSignature).toMatch(/\w+\(/);
-      expect(withSignature!.suggestedSignature).toMatch(
-        new RegExp(`^${PLACEHOLDER_FUNCTION_NAME}\\(`)
-      );
+      // The first candidate contains `processed.push(item.id)` where `processed`
+      // is declared before the candidate range — correctly flagged as method-call
+      // mutation. The second candidate mutates `output` directly. Both have
+      // mutations so neither gets a suggested signature (low confidence).
+      const withMutation = suggestions.filter((s) => s.issues.some((i) => i.type === 'mutation'));
+      expect(withMutation.length).toBeGreaterThan(0);
+      for (const s of suggestions) {
+        expect(s.confidence).toBe('low');
+      }
     });
   });
 });

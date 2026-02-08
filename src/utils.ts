@@ -1,5 +1,10 @@
 import type { ESTreeNode, FunctionNode, ComplexityPoint } from './types.js';
 
+/** Type-safe `includes` for readonly const arrays. */
+export function includes<T extends string>(array: readonly T[], value: string): value is T {
+  return (array as readonly string[]).includes(value);
+}
+
 /** Cyclomatic complexity formula starts at 1 (1 + decision_points). */
 export const BASE_FUNCTION_COMPLEXITY = 1;
 
@@ -7,10 +12,22 @@ export const DEFAULT_COMPLEXITY_INCREMENT = 1;
 
 export const LOGICAL_OPERATORS = ['&&', '||', '??'] as const;
 
+/** Logical assignment operators (short-circuit assignment), used by cyclomatic complexity. */
+export const LOGICAL_ASSIGNMENT_OPERATORS = ['||=', '&&=', '??='] as const;
+
 const DEFAULT_LOCATION = {
   start: { line: 0, column: 0 },
   end: { line: 0, column: 0 },
 } as const;
+
+/**
+ * Extract the construct name from a complexity point message.
+ * Messages follow the format: "+N: construct" or "+N (incl. M for nesting): construct"
+ */
+export function extractConstructFromMessage(message: string): string {
+  const match = message.match(/:\s*(.+)$/);
+  return match ? match[1].trim() : 'unknown';
+}
 
 export function createComplexityPoint(
   node: ESTreeNode,
@@ -31,73 +48,54 @@ export function createComplexityPoint(
   };
 }
 
-function getNameFromId(node: FunctionNode): string | null {
-  if ('id' in node && node.id && 'name' in node.id) {
-    return String(node.id.name);
+/**
+ * Safely extract a `.name` string from a nested property of a node.
+ * Returns null if the property path doesn't exist or has no `.name`.
+ */
+function getNestedName(node: ESTreeNode | FunctionNode, prop: string): string | null {
+  if (!(prop in node)) return null;
+  const child = (node as unknown as Record<string, unknown>)[prop];
+  if (child && typeof child === 'object' && 'name' in child) {
+    return String((child as { name: unknown }).name);
   }
   return null;
 }
 
-function getNameFromKey(node: FunctionNode): string | null {
-  if ('key' in node && node.key && 'name' in node.key) {
-    return String(node.key.name);
-  }
-  return null;
-}
+/**
+ * Try to extract a name from the parent node based on its type.
+ * Each entry maps a parent type to the property that holds the name identifier.
+ */
+const PARENT_NAME_PROPERTIES: ReadonlyArray<{ type: string; prop: string }> = [
+  { type: 'VariableDeclarator', prop: 'id' },
+  { type: 'Property', prop: 'key' },
+  { type: 'AssignmentExpression', prop: 'left' },
+  { type: 'MethodDefinition', prop: 'key' },
+  { type: 'PropertyDefinition', prop: 'key' },
+];
 
-function getNameFromVariableDeclarator(parent?: ESTreeNode): string | null {
-  if (parent?.type !== 'VariableDeclarator') return null;
-  if ('id' in parent && parent.id && 'name' in parent.id) {
-    return String(parent.id.name);
-  }
-  return null;
-}
+function getNameFromParent(parent?: ESTreeNode): string | null {
+  if (!parent) return null;
 
-function getNameFromProperty(parent?: ESTreeNode): string | null {
-  if (parent?.type !== 'Property') return null;
-  if ('key' in parent && parent.key && 'name' in parent.key) {
-    return String(parent.key.name);
-  }
-  return null;
-}
+  for (const { type, prop } of PARENT_NAME_PROPERTIES) {
+    if (parent.type !== type) continue;
+    const name = getNestedName(parent, prop);
+    if (name) return name;
 
-function getNameFromAssignment(parent?: ESTreeNode): string | null {
-  if (parent?.type !== 'AssignmentExpression') return null;
-  if ('left' in parent && parent.left && 'name' in parent.left) {
-    return String(parent.left.name);
+    // Special case: class constructor has no key name
+    if (type === 'MethodDefinition' && 'kind' in parent && parent.kind === 'constructor') {
+      return 'constructor';
+    }
   }
-  return null;
-}
 
-function getNameFromMethodDefinition(parent?: ESTreeNode): string | null {
-  if (parent?.type !== 'MethodDefinition') return null;
-  if ('key' in parent && parent.key && 'name' in parent.key) {
-    return String(parent.key.name);
-  }
-  if ('kind' in parent && parent.kind === 'constructor') {
-    return 'constructor';
-  }
-  return null;
-}
-
-function getNameFromPropertyDefinition(parent?: ESTreeNode): string | null {
-  if (parent?.type !== 'PropertyDefinition') return null;
-  if ('key' in parent && parent.key && 'name' in parent.key) {
-    return String(parent.key.name);
-  }
   return null;
 }
 
 export function getFunctionName(node: FunctionNode, parent?: ESTreeNode): string {
-  const fromNode = getNameFromId(node) ?? getNameFromKey(node);
+  const fromNode =
+    getNestedName(node as ESTreeNode, 'id') ?? getNestedName(node as ESTreeNode, 'key');
   if (fromNode) return fromNode;
 
-  const fromParent =
-    getNameFromVariableDeclarator(parent) ??
-    getNameFromProperty(parent) ??
-    getNameFromAssignment(parent) ??
-    getNameFromMethodDefinition(parent) ??
-    getNameFromPropertyDefinition(parent);
+  const fromParent = getNameFromParent(parent);
   if (fromParent) return fromParent;
 
   return node.type === 'ArrowFunctionExpression' ? '<arrow>' : '<anonymous>';
@@ -110,14 +108,12 @@ export function summarizeComplexity(
   const categories: Record<string, number> = {};
 
   for (const point of points) {
-    const match = point.message.match(/:\s*(.+)$/);
-    if (match) {
-      let category = match[1].trim();
-      if (normalizeCategory) {
-        category = normalizeCategory(category);
-      }
-      categories[category] = (categories[category] || 0) + point.complexity;
+    let category = extractConstructFromMessage(point.message);
+    if (category === 'unknown') continue;
+    if (normalizeCategory) {
+      category = normalizeCategory(category);
     }
+    categories[category] = (categories[category] || 0) + point.complexity;
   }
 
   const sorted = Object.entries(categories)
@@ -155,7 +151,7 @@ function countPatterns(points: ComplexityPoint[]): PatternCounts {
   let logicalOperatorCount = 0;
 
   for (const point of points) {
-    const construct = point.message.match(/:\s*(.+)$/)?.[1]?.trim() ?? '';
+    const construct = extractConstructFromMessage(point.message);
 
     if (construct === 'else if') {
       elseIfCount++;
@@ -197,8 +193,7 @@ export function formatBreakdown(points: ComplexityPoint[], options?: BreakdownOp
   const maxComplexity = Math.max(...sorted.map((p) => p.complexity));
 
   const lines = sorted.map((point) => {
-    const constructMatch = point.message.match(/:\s*(.+)$/);
-    const construct = constructMatch ? constructMatch[1].trim() : 'unknown';
+    const construct = extractConstructFromMessage(point.message);
 
     const nestingMatch = point.message.match(/\(incl\.\s*(\d+)\s*for nesting\)/);
     const nestingLevel = nestingMatch ? parseInt(nestingMatch[1], 10) : 0;

@@ -14,7 +14,6 @@ import type {
   FunctionScope,
 } from '../types.js';
 import { isElseIf, isDefaultValuePattern, isJsxShortCircuit } from './patterns.js';
-import { isReactComponent } from './react.js';
 import { isRecursiveCall } from './recursion.js';
 import { createComplexityPoint, DEFAULT_COMPLEXITY_INCREMENT, getFunctionName } from '../utils.js';
 import { createComplexityVisitor } from '../visitor.js';
@@ -24,7 +23,6 @@ import type { VariableInfo } from '../extraction/types.js';
 interface CognitiveFunctionScope extends FunctionScope {
   nestingLevel: number;
   nestingNodes: Set<ESTreeNode>;
-  isReactComponent: boolean;
   hasRecursiveCall: boolean;
 }
 
@@ -36,20 +34,23 @@ interface VisitorContext {
   ruleContext: Context;
 }
 
-function handleNestingChange(
+function handleNestingEnter(
   node: ESTreeNode,
-  getCurrentScope: () => CognitiveFunctionScope | undefined,
-  direction: 'enter' | 'exit'
+  getCurrentScope: () => CognitiveFunctionScope | undefined
 ): void {
   const scope = getCurrentScope();
   if (!scope?.nestingNodes.has(node)) return;
+  scope.nestingLevel++;
+}
 
-  if (direction === 'enter') {
-    scope.nestingLevel++;
-  } else {
-    scope.nestingLevel--;
-    scope.nestingNodes.delete(node);
-  }
+function handleNestingExit(
+  node: ESTreeNode,
+  getCurrentScope: () => CognitiveFunctionScope | undefined
+): void {
+  const scope = getCurrentScope();
+  if (!scope?.nestingNodes.has(node)) return;
+  scope.nestingLevel--;
+  scope.nestingNodes.delete(node);
 }
 
 function handleIfStatement(node: IfStatementNode, ctx: VisitorContext): void {
@@ -99,8 +100,8 @@ function buildVisitorHandlers(baseVisitor: Partial<Visitor>, ctx: VisitorContext
   return {
     ...baseVisitor,
 
-    '*': (node: ESTreeNode) => handleNestingChange(node, ctx.getCurrentScope, 'enter'),
-    '*:exit': (node: ESTreeNode) => handleNestingChange(node, ctx.getCurrentScope, 'exit'),
+    '*': (node: ESTreeNode) => handleNestingEnter(node, ctx.getCurrentScope),
+    '*:exit': (node: ESTreeNode) => handleNestingExit(node, ctx.getCurrentScope),
 
     CallExpression(node: CallExpressionNode): void {
       const scope = ctx.getCurrentScope();
@@ -161,7 +162,6 @@ function createCognitiveVisitorCore<TResult extends ComplexityResult>(
       points: [],
       nestingLevel: 0,
       nestingNodes: new Set(),
-      isReactComponent: isReactComponent(node as FunctionNode, name),
       hasRecursiveCall: false,
     }),
 

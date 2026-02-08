@@ -37,6 +37,7 @@ export interface VariableFlowAnalysis {
   mutations: MutationInfo[];
   closures: ClosureInfo[];
   hasEarlyReturn: boolean;
+  hasThisReference: boolean;
 }
 
 export interface MutationInfo {
@@ -53,7 +54,13 @@ export interface ClosureInfo {
 }
 
 export interface ExtractionIssue {
-  type: 'mutation' | 'closure' | 'early-return' | 'too-many-params' | 'multiple-outputs';
+  type:
+    | 'mutation'
+    | 'closure'
+    | 'early-return'
+    | 'too-many-params'
+    | 'multiple-outputs'
+    | 'this-reference';
   description: string;
   line?: number;
   variable?: string;

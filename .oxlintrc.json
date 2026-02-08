@@ -17,8 +17,14 @@
   },
 
   "rules": {
-    "complexity/max-cyclomatic": ["warn", { "max": 10 }],
-    "complexity/max-cognitive": ["warn", { "max": 15, "enableExtraction": true }],
+    "complexity/complexity": [
+      "warn",
+      {
+        "cyclomatic": 10,
+        "cognitive": 15,
+        "enableExtraction": true
+      }
+    ],
 
     "no-console": "warn",
     "no-debugger": "error",
