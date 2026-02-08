@@ -14,14 +14,8 @@ export type CallExpressionNode = ESTree.CallExpression;
 export type AssignmentExpressionNode = ESTree.AssignmentExpression;
 
 export type IfStatementNode = ESTree.IfStatement;
-export type ForStatementNode = ESTree.ForStatement;
-export type ForInStatementNode = ESTree.ForInStatement;
-export type ForOfStatementNode = ESTree.ForOfStatement;
-export type WhileStatementNode = ESTree.WhileStatement;
-export type DoWhileStatementNode = ESTree.DoWhileStatement;
 export type SwitchStatementNode = ESTree.SwitchStatement;
 export type SwitchCaseNode = ESTree.SwitchCase;
-export type BlockStatementNode = ESTree.BlockStatement;
 
 export type LabeledJumpStatementNode = ESTree.BreakStatement | ESTree.ContinueStatement;
 

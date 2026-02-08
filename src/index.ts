@@ -1,5 +1,7 @@
 import { definePlugin } from 'oxlint/plugins';
-import { maxCyclomatic, maxCognitive } from './rules.js';
+import { maxCyclomatic } from './rules/max-cyclomatic.js';
+import { maxCognitive } from './rules/max-cognitive.js';
+import { complexity } from './rules/complexity.js';
 
 // Re-export types for library users
 export type {
@@ -25,7 +27,7 @@ export { createCognitiveVisitor } from './cognitive/visitor.js';
 // Re-export utilities
 export { getFunctionName, createComplexityPoint, summarizeComplexity } from './utils.js';
 
-// Re-export extraction analysis types
+// Re-export extraction analysis
 export type {
   ExtractionSuggestion,
   ExtractionOptions,
@@ -36,8 +38,6 @@ export type {
   TypedVariable,
   ExtractionIssue,
 } from './extraction/index.js';
-
-// Re-export extraction analysis functions
 export {
   analyzeExtractionOpportunities,
   shouldAnalyzeExtraction,
@@ -50,14 +50,16 @@ export {
  * Provides cyclomatic and cognitive complexity rules for oxlint.
  *
  * Rules:
- * - complexity/max-cyclomatic: Enforce maximum cyclomatic complexity
- * - complexity/max-cognitive: Enforce maximum cognitive complexity
+ * - complexity/complexity: RECOMMENDED - Enforce both metrics in one pass (17% faster)
+ * - complexity/max-cyclomatic: DEPRECATED - Use complexity instead
+ * - complexity/max-cognitive: DEPRECATED - Use complexity instead
  */
 const plugin = definePlugin({
   meta: {
     name: 'complexity',
   },
   rules: {
+    complexity,
     'max-cyclomatic': maxCyclomatic,
     'max-cognitive': maxCognitive,
   },

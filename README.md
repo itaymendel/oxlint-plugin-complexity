@@ -10,7 +10,7 @@ Cyclomatic and cognitive complexity rules for [oxlint](https://oxc.rs/docs/guide
 - **Framework support:** React, Vue, Angular, Svelte, Astro, Solid, Qwik
 - **File types:** `.js` `.mjs` `.cjs` `.ts` `.tsx` `.jsx` `.vue` `.svelte` `.astro`
 
-> **Note:** Only cognitive complexity tracks nesting depth, which enables more actionable suggestions, so refactoring tips available only there.
+> **Note:** Refactoring tips require cognitive complexity (only it tracks nesting depth).
 
 ## Quick Start
 
@@ -23,18 +23,23 @@ npm install oxlint-plugin-complexity --save-dev
 {
   "jsPlugins": ["oxlint-plugin-complexity"],
   "rules": {
-    "complexity/max-cyclomatic": ["error", { "max": 20 }],
-    "complexity/max-cognitive": ["error", { "max": 15 }]
+    "complexity/complexity": [
+      "error",
+      {
+        "cyclomatic": 20,
+        "cognitive": 15
+      }
+    ]
   }
 }
 ```
 
 ## Actionable Error Messages
 
-Error messages include a summary and detailed line-by-line breakdown with the top offender highlighted. When deep nesting is detected, a refactoring tip is shown:
+Error messages show a summary, line-by-line breakdown, and refactoring tips for deep nesting:
 
 ```
-complexity(max-cognitive): Function 'processData' has Cognitive Complexity of 15.
+complexity(complexity): Function 'processData' has Cognitive Complexity of 15.
 Maximum allowed is 10. [if: +14, for: +1]
 
 Breakdown:
@@ -66,58 +71,55 @@ function processData(items, mode, config) {
 }
 ```
 
-## Rules
+## Rule Configuration
 
-### `complexity/max-cyclomatic`
+```jsonc
+{
+  "complexity/complexity": [
+    "error",
+    {
+      // Complexity thresholds
+      "cyclomatic": 20, // Default: 20
+      "cognitive": 15, // Default: 15
 
-Enforces maximum [cyclomatic complexity](https://en.wikipedia.org/wiki/Cyclomatic_complexity) (default: 20).
+      // Extraction suggestions (optional)
+      "enableExtraction": true, // Default: false
+      "extractionMultiplier": 1.5, // Default: 1.5 (triggers at 1.5× cognitive threshold)
+      "minExtractionPercentage": 30, // Default: 30 (min % of total complexity to suggest)
+
+      // Refactoring tip thresholds (optional, set to 0 to disable)
+      "nestingTipThreshold": 3, // Default: 3
+      "elseIfChainThreshold": 4, // Default: 4
+      "logicalOperatorThreshold": 3, // Default: 3
+    },
+  ],
+}
+```
+
+### Cyclomatic Complexity
+
+Counts decision points in code. [Learn more](https://en.wikipedia.org/wiki/Cyclomatic_complexity)
 
 **+1 for:** `if`, `for`, `for...in`, `for...of`, `while`, `do...while`, `case`, `catch`, `? :`, `&&`, `||`, `??`
 
-### `complexity/max-cognitive`
+### Cognitive Complexity
 
-Enforces maximum [cognitive complexity](https://www.sonarsource.com/resources/cognitive-complexity/) (default: 15).
+Measures how difficult code is to understand by penalizing nesting. [Learn more](https://www.sonarsource.com/resources/cognitive-complexity/)
 
 - **+1 for:** `if`/`for`/`while`/`switch`/`catch`/`? :` (+nesting), `else`, logical sequence changes, nested functions, recursion
 - **Excluded:** React components (PascalCase + returns JSX), default value patterns (`a || []`)
 
-#### Refactoring Tips
+### Refactoring Tips
 
-The plugin detects common complexity patterns and provides actionable tips. All thresholds are configurable (set to `0` to disable):
+Detects common complexity patterns and provides actionable tips:
 
-```jsonc
-{
-  "complexity/max-cognitive": [
-    "error",
-    {
-      "max": 15,
-      "nestingTipThreshold": 3,
-      "elseIfChainThreshold": 4,
-      "logicalOperatorThreshold": 3,
-    },
-  ],
-}
-```
+- **Deep nesting** (`nestingTipThreshold`): Suggests extracting inner loops/conditions
+- **Long else-if chains** (`elseIfChainThreshold`): Recommends lookup tables or strategy pattern
+- **Logical operator sequences** (`logicalOperatorThreshold`): Suggests extracting boolean expressions
 
-#### Extraction Suggestions
+### Extraction Suggestions
 
-Enable `enableExtraction` to get refactoring suggestions for complex functions. Analyzes variable flow to identify extractable code blocks and potential issues.
-
-```jsonc
-{
-  "complexity/max-cognitive": [
-    "error",
-    {
-      "max": 15,
-      "enableExtraction": true,
-      // Only suggest extractions when complexity exceeds 1.5× of max-cognitive threshold
-      "extractionMultiplier": 1.5,
-      // Only suggest blocks containing at least this % of total complexity
-      "minExtractionPercentage": 30,
-    },
-  ],
-}
-```
+When `enableExtraction: true`, analyzes variable flow to identify extractable code blocks:
 
 **Example output:**
 
@@ -145,13 +147,33 @@ Suggested: processBlock(config: Config, results: number[]): void
 
 ##### Known Limitations
 
-Extraction suggestions are best-effort heuristics based on static analysis. While they aim to be helpful, they may not always produce perfect results:
+Extraction suggestions use static analysis heuristics and may miss:
 
-- **Global/module-scoped variables** are not tracked by the variable flow analysis, which may lead to incorrect suggestions when extracting code that depends on or modifies globals.
-- **Complex data flows** involving closures, dynamic property access, or indirect mutations may not be fully captured.
-- Suggestions marked as "high confidence" indicate that no obvious issues were detected, but manual review is still recommended before applying any extraction.
+- **Globals/module variables** (not tracked by variable flow analysis)
+- **Complex flows** (closures, dynamic properties, indirect mutations)
 
-When in doubt, test the extracted code thoroughly to ensure correctness.
+Always review suggestions before applying, even when marked "high confidence".
+
+---
+
+## Migration from v0.x to v1.0
+
+**v1.0:** Combined rule for better performance. Separate rules deprecated:
+
+```diff
+// .oxlintrc.json
+{
+  "jsPlugins": ["oxlint-plugin-complexity"],
+  "rules": {
+-   "complexity/max-cyclomatic": ["error", { "max": 20 }],
+-   "complexity/max-cognitive": ["error", { "max": 15 }]
++   "complexity/complexity": ["error", {
++     "cyclomatic": 20,
++     "cognitive": 15
++   }]
+  }
+}
+```
 
 ---
 

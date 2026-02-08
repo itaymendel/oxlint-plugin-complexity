@@ -1,6 +1,8 @@
 import type { Context, ESTreeNode, LogicalExpressionNode, IfStatementNode } from '../types.js';
+import { includes } from '../utils.js';
 
 const DEFAULT_VALUE_OPERATORS = ['||', '??'] as const;
+const LITERAL_TYPES = new Set(['Literal', 'ArrayExpression', 'ObjectExpression']);
 
 export function isElseIf(node: IfStatementNode): boolean {
   const parent = node.parent as IfStatementNode | undefined;
@@ -46,13 +48,12 @@ function getChainRoot(
 export function isDefaultValuePattern(node: LogicalExpressionNode, context: Context): boolean {
   const { operator } = node;
 
-  if (!DEFAULT_VALUE_OPERATORS.includes(operator as (typeof DEFAULT_VALUE_OPERATORS)[number])) {
+  if (!includes(DEFAULT_VALUE_OPERATORS, operator)) {
     return false;
   }
 
   const rightmost = getRightmostInChain(node, DEFAULT_VALUE_OPERATORS);
-  const literalTypes = ['Literal', 'ArrayExpression', 'ObjectExpression'];
-  if (!literalTypes.includes(rightmost.type)) {
+  if (!LITERAL_TYPES.has(rightmost.type)) {
     return false;
   }
 

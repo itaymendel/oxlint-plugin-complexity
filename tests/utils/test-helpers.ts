@@ -3,6 +3,10 @@ import { walk } from 'estree-walker';
 import type { Node as EstreeWalkerNode } from 'estree-walker';
 import { createCyclomaticVisitor } from '#src/cyclomatic.js';
 import { createCognitiveVisitor } from '#src/cognitive/visitor.js';
+import {
+  createCombinedComplexityVisitor,
+  type CombinedComplexityResult,
+} from '#src/combined-visitor.js';
 import { getFunctionName as getProductionFunctionName } from '#src/utils.js';
 import type { ESTreeNode, FunctionNode, ComplexityResult, Context } from '#src/types.js';
 import type { ScopeManager } from 'oxlint/plugins';
@@ -251,5 +255,51 @@ export function calculateComplexity(
   return {
     cyclomatic: calculateCyclomaticComplexity(code, filename),
     cognitive: calculateCognitiveComplexity(code, filename),
+  };
+}
+
+/**
+ * Calculate both cyclomatic and cognitive complexity using the combined visitor.
+ * This should produce identical results to running them separately.
+ */
+export function calculateCombinedComplexity(
+  code: string,
+  filename = 'test.ts'
+): {
+  cyclomatic: Map<string, ComplexityFunctionResult>;
+  cognitive: Map<string, ComplexityFunctionResult>;
+} {
+  const { program, errors } = parseSync(filename, code);
+
+  if (errors.length > 0) {
+    throw new Error(`Parse errors in "${filename}": ${errors.map((e) => e.message).join(', ')}`);
+  }
+
+  const cyclomaticResults = new Map<string, ComplexityFunctionResult>();
+  const cognitiveResults = new Map<string, ComplexityFunctionResult>();
+  let functionIndex = 0;
+
+  const onComplexityCalculated = (result: CombinedComplexityResult, node: ESTreeNode) => {
+    const name = getFunctionName(node, functionIndex++);
+
+    cyclomaticResults.set(name, {
+      name,
+      total: result.cyclomatic,
+      points: result.cyclomaticPoints,
+    });
+
+    cognitiveResults.set(name, {
+      name,
+      total: result.cognitive,
+      points: result.cognitivePoints,
+    });
+  };
+
+  const listener = createCombinedComplexityVisitor(createMockContext(), onComplexityCalculated);
+  walkWithVisitor(program as unknown as ESTreeNode, listener, code);
+
+  return {
+    cyclomatic: cyclomaticResults,
+    cognitive: cognitiveResults,
   };
 }

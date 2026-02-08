@@ -103,17 +103,12 @@ function detectClosures(
           closureEndLine: closure.endLine,
           issue: `Captures mutable variable '${variable.name}'`,
         });
+        break; // One closure entry per variable is sufficient
       }
     }
   }
 
-  const seen = new Set<string>();
-  return closures.filter((c) => {
-    const key = c.variable.name;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  return closures;
 }
 
 const NESTED_FUNCTION_TYPES = new Set([
@@ -331,19 +326,14 @@ function detectThisReferences(candidate: ExtractionCandidate, functionNode: ESTr
   return found;
 }
 
-function deduplicateMutations(mutationSets: MutationInfo[][]): MutationInfo[] {
+function deduplicateMutations(mutations: MutationInfo[]): MutationInfo[] {
   const seen = new Set<string>();
-  const result: MutationInfo[] = [];
-  for (const set of mutationSets) {
-    for (const m of set) {
-      const key = `${m.variable.name}:${m.mutationLine}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        result.push(m);
-      }
-    }
-  }
-  return result;
+  return mutations.filter((m) => {
+    const key = `${m.variable.name}:${m.mutationLine}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function analyzeVariableFlow(
@@ -374,8 +364,8 @@ export function analyzeVariableFlow(
   }
 
   const mutations = deduplicateMutations([
-    detectDirectMutations(candidate, variables),
-    detectAstMutations(candidate, variables, functionNode),
+    ...detectDirectMutations(candidate, variables),
+    ...detectAstMutations(candidate, variables, functionNode),
   ]);
 
   const closures = detectClosures(candidate, variables);

@@ -13,7 +13,7 @@ interface IdentifierNode {
 /**
  * Extract TypeScript type annotation string from an identifier node.
  */
-export function getTypeAnnotation(node: ESTreeNode): string | undefined {
+function getTypeAnnotation(node: ESTreeNode): string | undefined {
   const typed = node as IdentifierNode;
   if (!typed.typeAnnotation) return undefined;
 
@@ -31,7 +31,7 @@ export function getTypeAnnotation(node: ESTreeNode): string | undefined {
  * Convert a TypeScript type node to a human-readable string.
  */
 // eslint-disable-next-line complexity/max-cyclomatic -- type mapping switch
-export function getTypeString(node: ESTreeNode): string {
+function getTypeString(node: ESTreeNode): string {
   switch (node.type) {
     case 'TSStringKeyword':
       return 'string';

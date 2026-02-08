@@ -1,6 +1,6 @@
 {
   "name": "oxlint-plugin-complexity",
-  "version": "0.3.2",
+  "version": "1.0.0-rc.1",
   "description": "Cyclomatic and cognitive complexity rules for oxlint",
   "keywords": [
     "oxlint",
@@ -45,6 +45,16 @@
     "lint": "pnpm run build && oxlint src/",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "benchmark": "node benchmarks/run-benchmark.ts",
+    "benchmark:clean": "rm -rf benchmarks/workspace benchmarks/results/*.json",
+    "profile": "tsx benchmarks/profile.ts",
+    "profile:vite": "tsx benchmarks/profile.ts --project=vite",
+    "profile:astro": "tsx benchmarks/profile.ts --project=astro",
+    "profile:trpc": "tsx benchmarks/profile.ts --project=trpc",
+    "profile:heap": "tsx benchmarks/profile.ts --heap",
+    "profile:compare": "tsx benchmarks/compare-profiles.ts",
+    "profile:internal": "tsx benchmarks/run-with-profiling.ts",
+    "profile:clean": "rm -rf benchmarks/profiles/*",
     "prepublishOnly": "pnpm run build",
     "prepare": "husky"
   },
@@ -55,6 +65,7 @@
     "oxc-parser": "^0.112.0",
     "oxlint": "^1.39.0",
     "prettier": "3.8.1",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.17"
   },

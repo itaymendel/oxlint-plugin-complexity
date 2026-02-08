@@ -3,8 +3,8 @@
 ## Development Setup
 
 ```bash
-npm install
-npm run build
+pnpm install
+pnpm run build
 ```
 
 ## Testing
@@ -12,9 +12,9 @@ npm run build
 Run the test suite:
 
 ```bash
-npm test          # Watch mode
-npm run test:run  # Single run
-npm run lint      # Dogfood: lint this plugin with itself
+pnpm test          # Watch mode
+pnpm run test:run  # Single run
+pnpm run lint      # Dogfood: lint this plugin with itself
 ```
 
 ### Fixture-Based Testing
