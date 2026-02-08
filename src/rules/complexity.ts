@@ -21,10 +21,12 @@ import {
 
 const DEFAULT_CYCLOMATIC = 20;
 const DEFAULT_COGNITIVE = 15;
+const DEFAULT_MIN_LINES = 10;
 
 interface CombinedComplexityOptions extends Omit<MaxCognitiveOptions, 'max'> {
   cyclomatic?: number;
   cognitive?: number;
+  minLines?: number;
 }
 
 /**
@@ -36,6 +38,7 @@ interface CombinedComplexityOptions extends Omit<MaxCognitiveOptions, 'max'> {
  * Default thresholds:
  * - Cyclomatic: 20
  * - Cognitive: 15
+ * - minLines: 10 (skip functions with fewer lines for better performance)
  */
 export const complexity: Rule = defineRule({
   meta: {
@@ -59,6 +62,11 @@ export const complexity: Rule = defineRule({
             minimum: 0,
             description: 'Maximum cognitive complexity (default: 15)',
           },
+          minLines: {
+            type: 'integer',
+            minimum: 0,
+            description: 'Minimum lines to analyze (default: 10, 0 = analyze all)',
+          },
           ...EXTRACTION_SCHEMA_PROPERTIES,
         },
         additionalProperties: false,
@@ -69,51 +77,75 @@ export const complexity: Rule = defineRule({
   createOnce(context: Context) {
     let maxCyclomatic = DEFAULT_CYCLOMATIC;
     let maxCognitive = DEFAULT_COGNITIVE;
+    let minLines = DEFAULT_MIN_LINES;
     let parsed = parseExtractionOptions({});
+
+    function isBelowMinLines(node: ESTreeNode): boolean {
+      if (minLines <= 0 || !node.loc) return false;
+      const functionLines = node.loc.end.line - node.loc.start.line + 1;
+      return functionLines < minLines;
+    }
+
+    function reportCyclomatic(
+      node: ESTreeNode,
+      functionName: string,
+      result: CombinedComplexityResult
+    ): void {
+      if (result.cyclomatic <= maxCyclomatic) return;
+
+      const summary = summarizeComplexity(result.cyclomaticPoints);
+      const breakdown = formatBreakdown(result.cyclomaticPoints);
+
+      context.report({
+        node,
+        message: `Function '${functionName}' has cyclomatic complexity of ${result.cyclomatic}. Maximum allowed is ${maxCyclomatic}.${summary}${breakdown}`,
+      });
+    }
+
+    function reportCognitive(
+      node: ESTreeNode,
+      functionName: string,
+      result: CombinedComplexityResult
+    ): void {
+      if (result.cognitive <= maxCognitive) return;
+
+      const summary = summarizeComplexity(result.cognitivePoints, normalizeCognitiveCategory);
+      const breakdown = formatBreakdown(result.cognitivePoints, parsed.breakdownOptions);
+      const extractionOutput = getExtractionOutput(
+        parsed,
+        context,
+        node,
+        result.cognitivePoints,
+        result.cognitive,
+        maxCognitive
+      );
+
+      context.report({
+        node,
+        message: `Function '${functionName}' has Cognitive Complexity of ${result.cognitive}. Maximum allowed is ${maxCognitive}.${summary}${breakdown}${extractionOutput}`,
+      });
+    }
+
+    function handleComplexityResult(result: CombinedComplexityResult, node: ESTreeNode): void {
+      if (isBelowMinLines(node)) return;
+
+      const funcNode = node as FunctionNode;
+      const functionName = getFunctionName(funcNode, funcNode.parent);
+
+      reportCyclomatic(node, functionName, result);
+      reportCognitive(node, functionName, result);
+    }
 
     return {
       before() {
         const options = (context.options[0] ?? {}) as CombinedComplexityOptions;
         maxCyclomatic = options.cyclomatic ?? DEFAULT_CYCLOMATIC;
         maxCognitive = options.cognitive ?? DEFAULT_COGNITIVE;
+        minLines = options.minLines ?? DEFAULT_MIN_LINES;
         parsed = parseExtractionOptions(options);
       },
 
-      ...createCombinedComplexityVisitor(
-        context,
-        (result: CombinedComplexityResult, node: ESTreeNode) => {
-          const funcNode = node as FunctionNode;
-          const functionName = getFunctionName(funcNode, funcNode.parent);
-
-          if (result.cyclomatic > maxCyclomatic) {
-            const summary = summarizeComplexity(result.cyclomaticPoints);
-            const breakdown = formatBreakdown(result.cyclomaticPoints);
-
-            context.report({
-              node,
-              message: `Function '${functionName}' has cyclomatic complexity of ${result.cyclomatic}. Maximum allowed is ${maxCyclomatic}.${summary}${breakdown}`,
-            });
-          }
-
-          if (result.cognitive > maxCognitive) {
-            const summary = summarizeComplexity(result.cognitivePoints, normalizeCognitiveCategory);
-            const breakdown = formatBreakdown(result.cognitivePoints, parsed.breakdownOptions);
-            const extractionOutput = getExtractionOutput(
-              parsed,
-              context,
-              node,
-              result.cognitivePoints,
-              result.cognitive,
-              maxCognitive
-            );
-
-            context.report({
-              node,
-              message: `Function '${functionName}' has Cognitive Complexity of ${result.cognitive}. Maximum allowed is ${maxCognitive}.${summary}${breakdown}${extractionOutput}`,
-            });
-          }
-        }
-      ),
+      ...createCombinedComplexityVisitor(context, handleComplexityResult),
     } as VisitorWithHooks;
   },
 });

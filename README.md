@@ -82,6 +82,9 @@ function processData(items, mode, config) {
       "cyclomatic": 20, // Default: 20
       "cognitive": 15, // Default: 15
 
+      // Performance optimization (optional)
+      "minLines": 10, // Default: 10 (skip functions <10 lines like getters; 0 = analyze all; counts comments/blanks)
+
       // Extraction suggestions (optional)
       "enableExtraction": true, // Default: false
       "extractionMultiplier": 1.5, // Default: 1.5 (triggers at 1.5× cognitive threshold)
