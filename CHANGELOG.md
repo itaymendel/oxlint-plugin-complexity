@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Migrate plugin imports from `oxlint/plugins` to standalone `@oxlint/plugins` package (fixes compatibility with oxlint >= 1.45.0)
+
 ### Added
 
 - Performance optimization: `minLines` option to skip complexity analysis for small functions. Default: 10 lines.

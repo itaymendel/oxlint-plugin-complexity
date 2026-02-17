@@ -1,4 +1,4 @@
-import { definePlugin } from 'oxlint/plugins';
+import { definePlugin } from '@oxlint/plugins';
 import { maxCyclomatic } from './rules/max-cyclomatic.js';
 import { maxCognitive } from './rules/max-cognitive.js';
 import { complexity } from './rules/complexity.js';

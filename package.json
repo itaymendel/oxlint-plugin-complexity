@@ -53,14 +53,15 @@
     "estree-walker": "^3.0.3",
     "husky": "^9.1.7",
     "oxc-parser": "^0.114.0",
-    "oxlint": "^1.39.0",
+    "@oxlint/plugins": "^1.48.0",
+    "oxlint": "^1.48.0",
     "prettier": "3.8.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.17"
   },
   "peerDependencies": {
-    "oxlint": ">=1.0.0"
+    "@oxlint/plugins": ">=1.43.0"
   },
   "engines": {
     "node": ">=20.0.0"
