@@ -10,10 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Migrate plugin imports from `oxlint/plugins` to standalone `@oxlint/plugins` package (fixes compatibility with oxlint >= 1.45.0)
+- **BREAKING:** `enableExtraction` now defaults to `true` — extraction suggestions are on by default (set `enableExtraction: false` to opt out)
 
 ### Added
 
 - Performance optimization: `minLines` option to skip complexity analysis for small functions. Default: 10 lines.
+- Export `createCombinedComplexityVisitor` and `CombinedComplexityResult` from public API
+
+### Removed
+
+- **BREAKING:** Drop deprecated `complexity/max-cyclomatic` and `complexity/max-cognitive` rules — use `complexity/complexity` instead
 
 ## [1.0.0-rc.1] - 2026-02-08
 
