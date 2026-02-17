@@ -1,4 +1,4 @@
-import { defineRule } from 'oxlint/plugins';
+import { defineRule } from '@oxlint/plugins';
 import type {
   Rule,
   Context,

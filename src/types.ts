@@ -1,6 +1,6 @@
-import type { ESTree } from 'oxlint/plugins';
+import type { ESTree } from '@oxlint/plugins';
 
-export type { Rule, Context, Visitor, VisitorWithHooks, Plugin } from 'oxlint/plugins';
+export type { Rule, Context, Visitor, VisitorWithHooks, Plugin } from '@oxlint/plugins';
 
 export type ESTreeNode = ESTree.Node;
 export type FunctionNode =

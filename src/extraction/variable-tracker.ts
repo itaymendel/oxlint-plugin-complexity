@@ -1,6 +1,6 @@
 import type { Context, ESTreeNode } from '../types.js';
 import type { VariableInfo, VariableReference, ReferenceType } from './types.js';
-import type { Scope, Variable, Reference } from 'oxlint/plugins';
+import type { Scope, Variable, Reference } from '@oxlint/plugins';
 
 interface IdentifierNode {
   type: string;
