@@ -1,6 +1,4 @@
 import { definePlugin } from '@oxlint/plugins';
-import { maxCyclomatic } from './rules/max-cyclomatic.js';
-import { maxCognitive } from './rules/max-cognitive.js';
 import { complexity } from './rules/complexity.js';
 
 // Re-export types for library users
@@ -23,6 +21,10 @@ export type { VisitorContext } from './visitor.js';
 // Re-export calculators for programmatic use
 export { createCyclomaticVisitor } from './cyclomatic.js';
 export { createCognitiveVisitor } from './cognitive/visitor.js';
+
+// Re-export combined visitor for advanced usage
+export { createCombinedComplexityVisitor } from './combined-visitor.js';
+export type { CombinedComplexityResult } from './combined-visitor.js';
 
 // Re-export utilities
 export { getFunctionName, createComplexityPoint, summarizeComplexity } from './utils.js';
@@ -50,9 +52,7 @@ export {
  * Provides cyclomatic and cognitive complexity rules for oxlint.
  *
  * Rules:
- * - complexity/complexity: RECOMMENDED - Enforce both metrics in one pass (17% faster)
- * - complexity/max-cyclomatic: DEPRECATED - Use complexity instead
- * - complexity/max-cognitive: DEPRECATED - Use complexity instead
+ * - complexity/complexity: Enforce both metrics in one pass
  */
 const plugin = definePlugin({
   meta: {
@@ -60,8 +60,6 @@ const plugin = definePlugin({
   },
   rules: {
     complexity,
-    'max-cyclomatic': maxCyclomatic,
-    'max-cognitive': maxCognitive,
   },
 });
 
