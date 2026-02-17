@@ -86,7 +86,7 @@ function processData(items, mode, config) {
       "minLines": 10, // Default: 10 (skip functions <10 lines like getters; 0 = analyze all; counts comments/blanks)
 
       // Extraction suggestions (optional)
-      "enableExtraction": true, // Default: false
+      "enableExtraction": true, // Default: true
       "extractionMultiplier": 1.5, // Default: 1.5 (triggers at 1.5× cognitive threshold)
       "minExtractionPercentage": 30, // Default: 30 (min % of total complexity to suggest)
 
@@ -122,7 +122,7 @@ Detects common complexity patterns and provides actionable tips:
 
 ### Extraction Suggestions
 
-When `enableExtraction: true`, analyzes variable flow to identify extractable code blocks:
+Analyzes variable flow to identify extractable code blocks (enabled by default, disable with `enableExtraction: false`):
 
 **Example output:**
 
@@ -159,9 +159,9 @@ Always review suggestions before applying, even when marked "high confidence".
 
 ---
 
-## Migration from v0.x to v1.0
+## Migration from v0.x
 
-**v1.0:** Combined rule for better performance. Separate rules deprecated:
+Replace the removed `max-cyclomatic` / `max-cognitive` rules with the combined `complexity` rule:
 
 ```diff
 // .oxlintrc.json
