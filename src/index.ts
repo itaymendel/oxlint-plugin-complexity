@@ -1,7 +1,6 @@
 import { definePlugin } from '@oxlint/plugins';
 import { complexity } from './rules/complexity.js';
 
-// Re-export types for library users
 export type {
   Plugin,
   Rule,
@@ -14,22 +13,17 @@ export type {
   MaxCognitiveOptions,
 } from './types.js';
 
-// Re-export visitor factory for advanced usage
 export { createComplexityVisitor } from './visitor.js';
 export type { VisitorContext } from './visitor.js';
 
-// Re-export calculators for programmatic use
 export { createCyclomaticVisitor } from './cyclomatic.js';
 export { createCognitiveVisitor } from './cognitive/visitor.js';
 
-// Re-export combined visitor for advanced usage
 export { createCombinedComplexityVisitor } from './combined-visitor.js';
 export type { CombinedComplexityResult } from './combined-visitor.js';
 
-// Re-export utilities
 export { getFunctionName, createComplexityPoint, summarizeComplexity } from './utils.js';
 
-// Re-export extraction analysis
 export type {
   ExtractionSuggestion,
   ExtractionOptions,
@@ -46,10 +40,25 @@ export {
   formatExtractionSuggestions,
 } from './extraction/index.js';
 
+export type { HalsteadMetrics, HalsteadCounts } from './module/halstead.js';
+export { calculateHalsteadMetrics, createHalsteadCounts } from './module/halstead.js';
+
+export type {
+  FunctionMetrics,
+  AggregateComplexity,
+  MIDecomposition,
+  ModuleAnalysisResult,
+  ModuleComplexityOptions,
+} from './module/visitor.js';
+export { calculateModuleComplexity, createModuleAnalysisVisitor } from './module/visitor.js';
+
+export { analyzeModule } from './analyze.js';
+
 /**
  * oxlint-plugin-complexity
  *
- * Provides cyclomatic and cognitive complexity rules for oxlint.
+ * Provides cyclomatic and cognitive complexity rules for oxlint,
+ * plus module-level analysis with Halstead metrics and module complexity scoring.
  *
  * Rules:
  * - complexity/complexity: Enforce both metrics in one pass

@@ -22,7 +22,8 @@
       {
         "cyclomatic": 10,
         "cognitive": 15,
-        "enableExtraction": true
+        "enableExtraction": true,
+        "moduleComplexity": 80
       }
     ],
 
@@ -56,5 +57,5 @@
     "promise/valid-params": "error"
   },
 
-  "ignorePatterns": ["dist/", "node_modules/", "coverage/", "*.config.js", "*.config.ts"]
+  "ignorePatterns": ["dist/", "node_modules/", "coverage/", "tests/", "*.config.js", "*.config.ts"]
 }

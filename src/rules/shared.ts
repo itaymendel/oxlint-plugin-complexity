@@ -50,6 +50,58 @@ export const EXTRACTION_SCHEMA_PROPERTIES = {
   },
 } as const;
 
+/** JSON Schema properties for module-level analysis (flat, top-level). */
+export const MODULE_SCHEMA_PROPERTIES = {
+  moduleComplexity: {
+    type: 'integer',
+    minimum: 0,
+    maximum: 100,
+    description:
+      'Enable module analysis and set maximum module complexity score (0-100). Omit to disable.',
+  },
+  maxCyclomaticSum: {
+    type: 'integer',
+    minimum: 0,
+    description: 'Maximum aggregate cyclomatic complexity for the module. Default: 0 (disabled)',
+  },
+  maxCognitiveSum: {
+    type: 'integer',
+    minimum: 0,
+    description: 'Maximum aggregate cognitive complexity for the module. Default: 0 (disabled)',
+  },
+} as const;
+
+export interface ParsedModuleOptions {
+  enabled: boolean;
+  moduleComplexity: number;
+  maxCyclomaticSum: number;
+  maxCognitiveSum: number;
+}
+
+export interface ModuleSchemaOptions {
+  moduleComplexity?: number;
+  maxCyclomaticSum?: number;
+  maxCognitiveSum?: number;
+}
+
+export function parseModuleOptions(options?: ModuleSchemaOptions): ParsedModuleOptions {
+  if (options?.moduleComplexity === undefined) {
+    return {
+      enabled: false,
+      moduleComplexity: 80,
+      maxCyclomaticSum: 0,
+      maxCognitiveSum: 0,
+    };
+  }
+
+  return {
+    enabled: true,
+    moduleComplexity: options.moduleComplexity,
+    maxCyclomaticSum: options.maxCyclomaticSum ?? 0,
+    maxCognitiveSum: options.maxCognitiveSum ?? 0,
+  };
+}
+
 type ExtractionSchemaOptions = Omit<MaxCognitiveOptions, 'max'>;
 
 export interface ParsedExtractionOptions {

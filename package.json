@@ -1,7 +1,7 @@
 {
   "name": "oxlint-plugin-complexity",
   "version": "2.0.1",
-  "description": "Cyclomatic and cognitive complexity rules for oxlint",
+  "description": "Cyclomatic, cognitive, and Halstead complexity rules for oxlint with module-level analysis and Maintainability Index",
   "keywords": [
     "oxlint",
     "oxc",
@@ -10,6 +10,8 @@
     "complexity",
     "cyclomatic",
     "cognitive",
+    "halstead",
+    "maintainability-index",
     "code-quality"
   ],
   "author": "itaymendel",
@@ -61,7 +63,17 @@
     "vitest": "^4.0.17"
   },
   "peerDependencies": {
-    "@oxlint/plugins": ">=1.43.0"
+    "@oxlint/plugins": ">=1.43.0",
+    "oxc-parser": ">=0.60.0",
+    "estree-walker": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "oxc-parser": {
+      "optional": true
+    },
+    "estree-walker": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=20.0.0"

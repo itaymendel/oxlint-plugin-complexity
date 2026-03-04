@@ -8,25 +8,76 @@ import type {
   ESTreeNode,
 } from '../types.js';
 import { getFunctionName, summarizeComplexity, formatBreakdown } from '../utils.js';
-import {
-  createCombinedComplexityVisitor,
-  type CombinedComplexityResult,
-} from '../combined-visitor.js';
+import type { CombinedComplexityResult } from '../combined-visitor.js';
+import { createModuleAnalysisVisitor, type ModuleAnalysisResult } from '../module/visitor.js';
 import {
   normalizeCognitiveCategory,
   parseExtractionOptions,
   getExtractionOutput,
   EXTRACTION_SCHEMA_PROPERTIES,
+  MODULE_SCHEMA_PROPERTIES,
+  parseModuleOptions,
+  type ParsedModuleOptions,
+  type ParsedExtractionOptions,
+  type ModuleSchemaOptions,
 } from './shared.js';
 
 const DEFAULT_CYCLOMATIC = 20;
 const DEFAULT_COGNITIVE = 15;
 const DEFAULT_MIN_LINES = 10;
 
-interface CombinedComplexityOptions extends Omit<MaxCognitiveOptions, 'max'> {
+interface CombinedComplexityOptions extends Omit<MaxCognitiveOptions, 'max'>, ModuleSchemaOptions {
   cyclomatic?: number;
   cognitive?: number;
   minLines?: number;
+}
+
+const CONTRIBUTOR_MESSAGES: Record<string, string> = {
+  effort: 'Main contributor: complex expressions increase bug risk.',
+  cyclomatic: 'Main contributor: too many decision branches.',
+  loc: 'Main contributor: functions are too long.',
+};
+
+function buildComplexityScoreMessages(
+  result: ModuleAnalysisResult,
+  opts: ParsedModuleOptions
+): string[] {
+  if (opts.moduleComplexity <= 0 || result.moduleComplexity <= opts.moduleComplexity) return [];
+
+  const messages = [
+    `Module is too complex (score: ${result.moduleComplexity.toFixed(1)}/100, maximum: ${opts.moduleComplexity}).`,
+  ];
+
+  if (result.halstead.bugs >= 0.1) {
+    messages.push(`Estimated bug risk: ~${result.halstead.bugs.toFixed(1)} defects.`);
+  }
+
+  const readingMinutes = result.halstead.time / 60;
+  if (readingMinutes >= 1) {
+    messages.push(`Estimated reading time: ~${Math.round(readingMinutes)} min.`);
+  }
+
+  messages.push(CONTRIBUTOR_MESSAGES[result.complexityDecomposition.mainContributor]);
+
+  return messages;
+}
+
+function buildAggregateMessages(result: ModuleAnalysisResult, opts: ParsedModuleOptions): string[] {
+  const messages: string[] = [];
+
+  if (opts.maxCyclomaticSum > 0 && result.cyclomatic.sum > opts.maxCyclomaticSum) {
+    messages.push(
+      `Module has too many decision paths (total: ${result.cyclomatic.sum}, maximum: ${opts.maxCyclomaticSum}).`
+    );
+  }
+
+  if (opts.maxCognitiveSum > 0 && result.cognitive.sum > opts.maxCognitiveSum) {
+    messages.push(
+      `Module is too hard to read (cognitive total: ${result.cognitive.sum}, maximum: ${opts.maxCognitiveSum}).`
+    );
+  }
+
+  return messages;
 }
 
 /**
@@ -39,6 +90,11 @@ interface CombinedComplexityOptions extends Omit<MaxCognitiveOptions, 'max'> {
  * - Cyclomatic: 20
  * - Cognitive: 15
  * - minLines: 10 (skip functions with fewer lines for better performance)
+ *
+ * When `moduleComplexity` is present, also performs module-level analysis:
+ * - Halstead metrics
+ * - Module complexity score (inverted Maintainability Index)
+ * - Aggregate complexity scores
  */
 export const complexity: Rule = defineRule({
   meta: {
@@ -67,6 +123,7 @@ export const complexity: Rule = defineRule({
             minimum: 0,
             description: 'Minimum lines to analyze (default: 10, 0 = analyze all)',
           },
+          ...MODULE_SCHEMA_PROPERTIES,
           ...EXTRACTION_SCHEMA_PROPERTIES,
         },
         additionalProperties: false,
@@ -75,10 +132,12 @@ export const complexity: Rule = defineRule({
   },
 
   createOnce(context: Context) {
+    // Options are read in before() — these are mutable defaults
     let maxCyclomatic = DEFAULT_CYCLOMATIC;
     let maxCognitive = DEFAULT_COGNITIVE;
     let minLines = DEFAULT_MIN_LINES;
-    let parsed = parseExtractionOptions({});
+    let parsed: ParsedExtractionOptions = parseExtractionOptions({});
+    let moduleOpts: ParsedModuleOptions = parseModuleOptions();
 
     function isBelowMinLines(node: ESTreeNode): boolean {
       if (minLines <= 0 || !node.loc) return false;
@@ -136,6 +195,22 @@ export const complexity: Rule = defineRule({
       reportCognitive(node, functionName, result);
     }
 
+    function reportModule(result: ModuleAnalysisResult): void {
+      if (!moduleOpts.enabled) return;
+
+      const messages = [
+        ...buildComplexityScoreMessages(result, moduleOpts),
+        ...buildAggregateMessages(result, moduleOpts),
+      ];
+
+      if (messages.length === 0) return;
+
+      context.report({
+        loc: { start: { line: 1, column: 0 }, end: { line: 1, column: 0 } },
+        message: messages.join(' '),
+      });
+    }
+
     return {
       before() {
         const options = (context.options[0] ?? {}) as CombinedComplexityOptions;
@@ -143,9 +218,13 @@ export const complexity: Rule = defineRule({
         maxCognitive = options.cognitive ?? DEFAULT_COGNITIVE;
         minLines = options.minLines ?? DEFAULT_MIN_LINES;
         parsed = parseExtractionOptions(options);
+        moduleOpts = parseModuleOptions(options);
       },
 
-      ...createCombinedComplexityVisitor(context, handleComplexityResult),
+      // Always use the module analysis visitor — it's a superset of the combined visitor.
+      // When module analysis is disabled, reportModule() is a no-op, so the only overhead
+      // is Halstead counting. This avoids the need to conditionally create visitors.
+      ...createModuleAnalysisVisitor(context, reportModule, handleComplexityResult),
     } as VisitorWithHooks;
   },
 });
