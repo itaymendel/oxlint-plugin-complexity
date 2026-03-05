@@ -184,7 +184,7 @@ When `moduleComplexity` is set, the rule analyzes the entire file and reports ac
 
 **Example output:**
 
-```
+```text
 Module is too complex (score: 81.5/100, maximum: 80).
 Estimated bug risk: ~2.3 defects. Estimated reading time: ~42 min.
 Main contributor: complex expressions increase bug risk.
@@ -203,7 +203,7 @@ The main contributor tells you _why_ the score is high:
 Use `analyzeModule` for complexity analysis outside of linting (CI scripts, custom tools, etc.):
 
 ```typescript
-import { analyzeModule } from 'oxlint-plugin-complexity';
+import { analyzeModule } from 'oxlint-plugin-complexity/analyze';
 
 const result = analyzeModule(code, 'module.ts');
 

@@ -52,8 +52,6 @@ export type {
 } from './module/visitor.js';
 export { calculateModuleComplexity, createModuleAnalysisVisitor } from './module/visitor.js';
 
-export { analyzeModule } from './analyze.js';
-
 /**
  * oxlint-plugin-complexity
  *

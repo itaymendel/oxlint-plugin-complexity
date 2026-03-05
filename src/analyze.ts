@@ -70,11 +70,11 @@ function walkAndDispatch(ast: ESTreeNode, code: string, visitor: VisitorHandlerM
   });
 }
 
-function createLibraryContext(): Context {
+function createLibraryContext(code: string): Context {
   return {
     sourceCode: {
-      text: '',
-      getText: () => '',
+      text: code,
+      getText: () => code,
       scopeManager: null,
       getScope: () => null,
     },
@@ -101,7 +101,7 @@ export function analyzeModule(
   let result: ModuleAnalysisResult | undefined;
 
   const visitor = createModuleAnalysisVisitor(
-    createLibraryContext(),
+    createLibraryContext(code),
     (r) => {
       result = r;
     },
