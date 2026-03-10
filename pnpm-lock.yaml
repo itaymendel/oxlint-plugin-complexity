@@ -10,7 +10,7 @@ importers:
     devDependencies:
       '@oxlint/plugins':
         specifier: ^1.48.0
-        version: 1.51.0
+        version: 1.52.0
       '@types/node':
         specifier: ^22.19.5
         version: 22.19.13
@@ -448,8 +448,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@oxlint/plugins@1.51.0':
-    resolution: {integrity: sha512-0FUo6yQU3AAxo6iSzATC9NO/5SqlYKOQTpLWM/66/AjkCuFHuGzUfXUZL830tjhpmzfyBr3nzhNusMm1lzzdyg==}
+  '@oxlint/plugins@1.52.0':
+    resolution: {integrity: sha512-8ApHOeoUc/QPKGSQrX069ZpPcTTKVJRfm1msdDONhuyjM8s5IR67VY2+hO1rd8iVpKfCh8O1eHb6yJfs+vgoRw==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
   '@rollup/rollup-android-arm-eabi@4.57.0':
@@ -1070,7 +1070,7 @@ snapshots:
   '@oxlint/binding-win32-x64-msvc@1.51.0':
     optional: true
 
-  '@oxlint/plugins@1.51.0': {}
+  '@oxlint/plugins@1.52.0': {}
 
   '@rollup/rollup-android-arm-eabi@4.57.0':
     optional: true
