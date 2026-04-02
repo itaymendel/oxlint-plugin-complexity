@@ -157,7 +157,65 @@ Extraction suggestions use static analysis heuristics and may miss:
 
 Always review suggestions before applying, even when marked "high confidence".
 
----
+## Standalone Library Usage
+
+You can use this package as a standalone library to analyze complexity programmatically - no oxlint runtime needed.
+
+```bash
+npm install oxlint-plugin-complexity oxc-parser estree-walker diff
+```
+
+### Analyzing a file
+
+```typescript
+import { analyzeFileComplexity } from 'oxlint-plugin-complexity/standalone';
+
+const code = `
+function processOrder(order, config) {
+  if (order.items.length === 0) {
+    return null;
+  }
+  for (const item of order.items) {
+    if (item.quantity > config.maxQuantity) {
+      if (config.strict) {
+        throw new Error('Over limit');
+      }
+    }
+  }
+  return order;
+}
+`;
+
+const result = analyzeFileComplexity(code, 'order.ts');
+
+for (const fn of result.functions) {
+  console.log(`${fn.name} (lines ${fn.startLine}-${fn.endLine})`);
+  console.log(`  Cyclomatic: ${fn.cyclomatic}`);
+  console.log(`  Cognitive:  ${fn.cognitive}`);
+}
+```
+
+Each function result includes `cyclomaticPoints` and `cognitivePoints` arrays with per-construct breakdowns (line, column, complexity contribution, and message).
+
+### Git Diff Analysis
+
+Analyze only the functions touched by a diff - useful for CI gates, pre-commit hooks, and code review tools.
+
+```typescript
+import { analyzeDiffComplexity } from 'oxlint-plugin-complexity/diff';
+import { execFileSync } from 'node:child_process';
+
+const diff = execFileSync('git', ['diff', 'HEAD~1']).toString();
+const result = analyzeDiffComplexity(diff);
+
+for (const file of result.files) {
+  for (const fn of file.functions) {
+    if (fn.cognitive > 15) {
+      console.log(`${file.path}:${fn.startLine} ${fn.name} - cognitive: ${fn.cognitive}`);
+    }
+  }
+}
+```
 
 ## Migration from v0.x
 
@@ -177,8 +235,6 @@ Replace the removed `max-cyclomatic` / `max-cognitive` rules with the combined `
   }
 }
 ```
-
----
 
 ## Attribution
 

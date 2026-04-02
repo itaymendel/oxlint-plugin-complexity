@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Standalone library API (`analyzeFileComplexity`) and git diff analysis (`analyzeDiffComplexity`) for programmatic use without the oxlint runtime
+
 ## [2.0.3] - 2026-03-18
 
 ### Changed
