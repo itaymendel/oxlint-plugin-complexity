@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { analyzeFileComplexity, type FunctionComplexityResult } from './standalone.js';
-import { parseDiff } from './diff-parser.js';
+import { parseDiff, type DiffFile } from './diff-parser.js';
 
 export interface DiffAnalysisOptions {
   /** Which changes to analyze: additions (default), deletions, or both */
@@ -41,6 +41,37 @@ function hasOverlap(startLine: number, endLine: number, lines: Set<number>): boo
   return false;
 }
 
+function analyzeChangedFile(
+  diffFile: DiffFile,
+  include: 'additions' | 'deletions' | 'both',
+  readFile: (path: string) => string
+): DiffFileResult | null {
+  const path = diffFile.newPath ?? diffFile.oldPath;
+  if (!path) return null;
+
+  if (include !== 'both' && !diffFile.newPath) return null;
+
+  const changedLines = getChangedLines(diffFile.addedLines, diffFile.deletedLines, include);
+  if (changedLines.length === 0) return null;
+
+  const changedLineSet = new Set(changedLines);
+
+  let source: string;
+  try {
+    source = readFile(path);
+  } catch {
+    return null;
+  }
+
+  const analysis = analyzeFileComplexity(source, path);
+  const touchedFunctions = analysis.functions.filter((fn) =>
+    hasOverlap(fn.startLine, fn.endLine, changedLineSet)
+  );
+
+  if (touchedFunctions.length === 0) return null;
+  return { path, changedLines, functions: touchedFunctions };
+}
+
 /**
  * Analyze complexity of functions touched by a unified diff.
  *
@@ -62,33 +93,8 @@ export function analyzeDiffComplexity(
   const results: DiffFileResult[] = [];
 
   for (const diffFile of diffFiles) {
-    const path = diffFile.newPath ?? diffFile.oldPath;
-    if (!path) continue;
-
-    // Skip deleted files unless analyzing 'both' (no source to analyze)
-    if (include !== 'both' && !diffFile.newPath) continue;
-
-    const changedLines = getChangedLines(diffFile.addedLines, diffFile.deletedLines, include);
-    if (changedLines.length === 0) continue;
-
-    const changedLineSet = new Set(changedLines);
-
-    let source: string;
-    try {
-      source = readFile(path);
-    } catch {
-      // File might not exist (e.g., deleted file in 'both' mode)
-      continue;
-    }
-
-    const analysis = analyzeFileComplexity(source, path);
-    const touchedFunctions = analysis.functions.filter((fn) =>
-      hasOverlap(fn.startLine, fn.endLine, changedLineSet)
-    );
-
-    if (touchedFunctions.length > 0) {
-      results.push({ path, changedLines, functions: touchedFunctions });
-    }
+    const result = analyzeChangedFile(diffFile, include, readFile);
+    if (result) results.push(result);
   }
 
   return { files: results };
