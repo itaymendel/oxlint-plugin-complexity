@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Standalone library API (`analyzeFileComplexity`) and git diff analysis (`analyzeDiffComplexity`) for programmatic use without the oxlint runtime
 
+### Changed
+
+- Bump oxlint from 1.56.0 to 1.58.0
+- Bump oxc-parser from 0.120.0 to 0.123.0
+- Bump @oxlint/plugins from 1.56.0 to 1.58.0
+- Bump vitest from 4.1.0 to 4.1.2
+- Bump pnpm/action-setup from 4 to 5
+
 ## [2.0.3] - 2026-03-18
 
 ### Changed
