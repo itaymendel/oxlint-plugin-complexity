@@ -2,9 +2,11 @@ import { readFileSync } from 'node:fs';
 import { analyzeFileComplexity, type FunctionComplexityResult } from './standalone.js';
 import { parseDiff, type DiffFile } from './diff-parser.js';
 
+export type DiffIncludeMode = 'additions' | 'deletions' | 'both';
+
 export interface DiffAnalysisOptions {
   /** Which changes to analyze: additions (default), deletions, or both */
-  include?: 'additions' | 'deletions' | 'both';
+  include?: DiffIncludeMode;
   /** Custom file reader. Defaults to fs.readFileSync(path, 'utf-8') */
   readFile?: (path: string) => string;
 }
@@ -22,7 +24,7 @@ export interface DiffAnalysisResult {
 function getChangedLines(
   addedLines: number[],
   deletedLines: number[],
-  include: 'additions' | 'deletions' | 'both'
+  include: DiffIncludeMode
 ): number[] {
   switch (include) {
     case 'additions':
@@ -35,21 +37,19 @@ function getChangedLines(
 }
 
 function hasOverlap(startLine: number, endLine: number, lines: Set<number>): boolean {
-  for (let line = startLine; line <= endLine; line++) {
-    if (lines.has(line)) return true;
+  for (const line of lines) {
+    if (line >= startLine && line <= endLine) return true;
   }
   return false;
 }
 
 function analyzeChangedFile(
   diffFile: DiffFile,
-  include: 'additions' | 'deletions' | 'both',
+  include: DiffIncludeMode,
   readFile: (path: string) => string
 ): DiffFileResult | null {
-  const path = diffFile.newPath ?? diffFile.oldPath;
-  if (!path) return null;
-
-  if (include !== 'both' && !diffFile.newPath) return null;
+  if (!diffFile.newPath) return null;
+  const path = diffFile.newPath;
 
   const changedLines = getChangedLines(diffFile.addedLines, diffFile.deletedLines, include);
   if (changedLines.length === 0) return null;

@@ -162,13 +162,13 @@ Always review suggestions before applying, even when marked "high confidence".
 You can use this package as a standalone library to analyze complexity programmatically - no oxlint runtime needed.
 
 ```bash
-npm install oxlint-plugin-complexity
+npm install oxlint-plugin-complexity oxc-parser estree-walker diff
 ```
 
 ### Analyzing a file
 
 ```typescript
-import { analyzeFileComplexity } from 'oxlint-plugin-complexity';
+import { analyzeFileComplexity } from 'oxlint-plugin-complexity/standalone';
 
 const code = `
 function processOrder(order, config) {
@@ -202,7 +202,7 @@ Each function result includes `cyclomaticPoints` and `cognitivePoints` arrays wi
 Analyze only the functions touched by a diff - useful for CI gates, pre-commit hooks, and code review tools.
 
 ```typescript
-import { analyzeDiffComplexity } from 'oxlint-plugin-complexity';
+import { analyzeDiffComplexity } from 'oxlint-plugin-complexity/diff';
 import { execFileSync } from 'node:child_process';
 
 const diff = execFileSync('git', ['diff', 'HEAD~1']).toString();

@@ -170,7 +170,7 @@ function bar() {
   return 2;
 }`;
 
-    const result = analyzeFileComplexity(code);
+    const result = analyzeFileComplexity(code, 'test.ts');
     expect(result.functions).toHaveLength(2);
     expect(result.functions[0].name).toBe('foo');
     expect(result.functions[0].startLine).toBe(1);
@@ -194,7 +194,7 @@ function bar() {
   return false;
 }`;
 
-    const result = analyzeFileComplexity(code);
+    const result = analyzeFileComplexity(code, 'test.ts');
     const fn = result.functions[0];
     expect(fn.cyclomatic).toBeGreaterThan(1);
     expect(fn.cognitive).toBeGreaterThan(0);
@@ -210,7 +210,7 @@ function bar() {
   return 'hello';
 };`;
 
-    const result = analyzeFileComplexity(code);
+    const result = analyzeFileComplexity(code, 'test.ts');
     expect(result.functions).toHaveLength(1);
     expect(result.functions[0].name).toBe('greet');
   });
@@ -222,7 +222,7 @@ function bar() {
   it('names anonymous functions with index', () => {
     const code = `const arr = [1,2,3].map((x) => x * 2);`;
 
-    const result = analyzeFileComplexity(code);
+    const result = analyzeFileComplexity(code, 'test.ts');
     expect(result.functions[0].name).toMatch(/anonymous_/);
   });
 

@@ -14,9 +14,18 @@ importers:
       '@types/node':
         specifier: ^22.19.5
         version: 22.19.15
+      diff:
+        specifier: ^8.0.4
+        version: 8.0.4
+      estree-walker:
+        specifier: ^3.0.3
+        version: 3.0.3
       husky:
         specifier: ^9.1.7
         version: 9.1.7
+      oxc-parser:
+        specifier: ^0.123.0
+        version: 0.123.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
       oxlint:
         specifier: ^1.48.0
         version: 1.56.0
@@ -32,16 +41,6 @@ importers:
       vitest:
         specifier: ^4.0.17
         version: 4.1.0(@types/node@22.19.15)(vite@7.3.1(@types/node@22.19.15)(tsx@4.21.0))
-    optionalDependencies:
-      diff:
-        specifier: ^8.0.4
-        version: 8.0.4
-      estree-walker:
-        specifier: ^3.0.3
-        version: 3.0.3
-      oxc-parser:
-        specifier: ^0.123.0
-        version: 0.123.0(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)
 
 packages:
 
@@ -1268,8 +1267,7 @@ snapshots:
   '@oxc-parser/binding-win32-x64-msvc@0.123.0':
     optional: true
 
-  '@oxc-project/types@0.123.0':
-    optional: true
+  '@oxc-project/types@0.123.0': {}
 
   '@oxlint/binding-android-arm-eabi@1.56.0':
     optional: true
@@ -1472,8 +1470,7 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  diff@8.0.4:
-    optional: true
+  diff@8.0.4: {}
 
   es-module-lexer@2.0.0: {}
 
@@ -1589,7 +1586,6 @@ snapshots:
     transitivePeerDependencies:
       - '@emnapi/core'
       - '@emnapi/runtime'
-    optional: true
 
   oxlint@1.56.0:
     optionalDependencies:

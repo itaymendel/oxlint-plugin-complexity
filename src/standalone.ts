@@ -111,10 +111,7 @@ export function walkAndDispatch(
  * Parses the code with oxc-parser, runs the combined cyclomatic + cognitive
  * complexity visitor, and returns results for every function in the file.
  */
-export function analyzeFileComplexity(
-  code: string,
-  filename: string = 'file.ts'
-): FileAnalysisResult {
+export function analyzeFileComplexity(code: string, filename: string): FileAnalysisResult {
   const { program, errors } = parseSync(filename, code);
 
   if (errors.length > 0) {
