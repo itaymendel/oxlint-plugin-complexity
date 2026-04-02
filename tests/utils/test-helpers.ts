@@ -8,6 +8,7 @@ import {
   type CombinedComplexityResult,
 } from '#src/combined-visitor.js';
 import { getFunctionName as getProductionFunctionName } from '#src/utils.js';
+import { createLineOffsetTable, offsetToLineCol, walkAndDispatch } from '#src/standalone.js';
 import type { ESTreeNode, FunctionNode, ComplexityResult, Context } from '#src/types.js';
 import type { ScopeManager } from 'oxlint/plugins';
 import { analyzeScope } from './test-scope-analyzer.js';
@@ -20,34 +21,8 @@ export interface ComplexityFunctionResult extends ComplexityResult {
   name: string;
 }
 
-/**
- * Create a lookup table to convert byte offsets to line/column.
- * oxc-parser returns `start`/`end` as byte offsets, not ESTree `loc` objects.
- */
-export function createLineOffsetTable(code: string): number[] {
-  const lineOffsets: number[] = [0];
-  for (let i = 0; i < code.length; i++) {
-    if (code[i] === '\n') {
-      lineOffsets.push(i + 1);
-    }
-  }
-  return lineOffsets;
-}
-
-/**
- * Convert a byte offset to line/column position.
- */
-export function offsetToLineCol(
-  offset: number,
-  lineOffsets: number[]
-): { line: number; column: number } {
-  for (let i = lineOffsets.length - 1; i >= 0; i--) {
-    if (offset >= lineOffsets[i]) {
-      return { line: i + 1, column: offset - lineOffsets[i] };
-    }
-  }
-  return { line: 1, column: offset };
-}
+// Re-export for tests that import directly from test-helpers
+export { createLineOffsetTable, offsetToLineCol };
 
 /**
  * Add parent references and loc objects to all AST nodes.
@@ -119,51 +94,17 @@ function getFunctionName(node: ESTreeNode, index: number): string {
 
 /**
  * Walk an AST using estree-walker and call visitor handlers.
- * Converts oxc-parser's byte offsets (start/end) to ESTree loc objects.
+ * Delegates to the production walkAndDispatch from standalone.ts.
  */
 export function walkWithVisitor(
   ast: ESTreeNode,
   visitor: Record<string, ((node: ESTreeNode) => void) | undefined>,
   code?: string
 ): void {
-  const lineOffsets = code ? createLineOffsetTable(code) : null;
-
-  walk(ast as EstreeWalkerNode, {
-    enter(node, parent) {
-      const esNode = node as unknown as ESTreeNode;
-
-      // Convert byte offsets to loc if we have the source code
-      if (lineOffsets) {
-        const nodeWithOffsets = node as unknown as { start?: number; end?: number };
-        if (typeof nodeWithOffsets.start === 'number' && typeof nodeWithOffsets.end === 'number') {
-          const startLoc = offsetToLineCol(nodeWithOffsets.start, lineOffsets);
-          const endLoc = offsetToLineCol(nodeWithOffsets.end, lineOffsets);
-          Object.defineProperty(esNode, 'loc', {
-            value: { start: startLoc, end: endLoc },
-            writable: true,
-            enumerable: false,
-            configurable: true,
-          });
-        }
-      }
-
-      // Set parent reference as non-enumerable to prevent walker from traversing it
-      Object.defineProperty(esNode, 'parent', {
-        value: parent as unknown as ESTreeNode,
-        writable: true,
-        enumerable: false,
-        configurable: true,
-      });
-
-      visitor[esNode.type]?.(esNode);
-      visitor['*']?.(esNode);
-    },
-    leave(node) {
-      const esNode = node as unknown as ESTreeNode;
-      visitor[`${esNode.type}:exit`]?.(esNode);
-      visitor['*:exit']?.(esNode);
-    },
-  });
+  if (!code) {
+    throw new Error('walkWithVisitor requires code for offset-to-loc conversion');
+  }
+  walkAndDispatch(ast, code, visitor);
 }
 
 /**

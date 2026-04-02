@@ -46,6 +46,18 @@ export {
   formatExtractionSuggestions,
 } from './extraction/index.js';
 
+// Standalone analysis (no oxlint runtime needed)
+export { analyzeFileComplexity } from './standalone.js';
+export type { FileAnalysisResult, FunctionComplexityResult } from './standalone.js';
+
+// Diff analysis
+export { analyzeDiffComplexity } from './diff.js';
+export type { DiffAnalysisOptions, DiffAnalysisResult, DiffFileResult } from './diff.js';
+
+// Diff parser (for custom filtering)
+export { parseDiff } from './diff-parser.js';
+export type { DiffFile, DiffHunk } from './diff-parser.js';
+
 /**
  * oxlint-plugin-complexity
  *
