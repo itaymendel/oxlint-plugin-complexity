@@ -60,7 +60,7 @@
   "devDependencies": {
     "@oxlint/plugins": "^1.48.0",
     "@types/node": "^22.19.5",
-    "diff": "^8.0.4",
+    "diff": "^9.0.0",
     "estree-walker": "^3.0.3",
     "husky": "^9.1.7",
     "oxc-parser": "^0.123.0",
