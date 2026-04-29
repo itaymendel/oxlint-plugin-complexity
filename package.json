@@ -1,6 +1,6 @@
 {
   "name": "oxlint-plugin-complexity",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Cyclomatic and cognitive complexity rules for oxlint",
   "keywords": [
     "oxlint",
@@ -58,17 +58,17 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@oxlint/plugins": "^1.48.0",
-    "@types/node": "^22.19.5",
-    "diff": "^8.0.4",
+    "@oxlint/plugins": "^1.62.0",
+    "@types/node": "^22.19.17",
+    "diff": "^9.0.0",
     "estree-walker": "^3.0.3",
     "husky": "^9.1.7",
-    "oxc-parser": "^0.123.0",
-    "oxlint": "^1.48.0",
-    "prettier": "3.8.1",
+    "oxc-parser": "^0.128.0",
+    "oxlint": "^1.62.0",
+    "prettier": "3.8.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.17"
+    "vitest": "^4.1.5"
   },
   "peerDependencies": {
     "@oxlint/plugins": ">=1.43.0",
