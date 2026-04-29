@@ -5,14 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.3] - 2026-04-29
-
-### Changed
-
-- Bump typescript from 5.9.3 to 6.0.3
-- Bump pnpm/action-setup from 5 to 6
-- Bump pnpm (packageManager) from 10.26.2 to 10.33.2
-
 ## [2.1.2] - 2026-04-29
 
 ### Changed
@@ -24,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump prettier from 3.8.1 to 3.8.3
 - Bump diff from 8.0.4 to 9.0.0
 - Bump @types/node from 22.19.15 to 22.19.17
+- Bump typescript from 5.9.3 to 6.0.3
+- Bump pnpm/action-setup from 5 to 6
+- Bump pnpm (packageManager) from 10.26.2 to 10.33.2
 
 ## [2.1.1] - 2026-04-03
 
