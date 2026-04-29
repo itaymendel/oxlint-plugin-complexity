@@ -180,7 +180,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI pipeline
 - Pre-commit hooks with Husky
 
-[Unreleased]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v2.1.1...HEAD
+[Unreleased]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v2.1.2...HEAD
+[2.1.2]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v2.1.1...v2.1.2
 [2.1.1]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v2.0.3...v2.1.0
 [2.0.3]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v2.0.2...v2.0.3
