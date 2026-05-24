@@ -7,10 +7,11 @@ settings:
 importers:
 
   .:
-    devDependencies:
+    dependencies:
       '@oxlint/plugins':
         specifier: ^1.62.0
         version: 1.62.0
+    devDependencies:
       '@types/node':
         specifier: ^22.19.17
         version: 22.19.19
