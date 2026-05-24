@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.3] - 2026-05-24
+
+### Fixed
+
+- Move `@oxlint/plugins` from peerDependency to dependency so it installs automatically with the plugin (#102, #107)
+
+### Changed
+
+- Bump @oxlint/plugins from 1.62.0 to 1.66.0
+- Bump oxlint from 1.62.0 to 1.66.0
+- Bump oxc-parser from 0.128.0 to 0.132.0
+- Bump tsx from 4.21.0 to 4.22.3
+- Bump vitest from 4.1.5 to 4.1.7
+- Bump @types/node from 22.19.17 to 22.19.19
+
 ## [2.1.2] - 2026-04-29
 
 ### Changed
