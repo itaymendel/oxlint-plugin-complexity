@@ -58,7 +58,7 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@oxlint/plugins": "^1.62.0"
+    "@oxlint/plugins": "^1.66.0"
   },
   "devDependencies": {
     "@types/node": "^22.19.17",
