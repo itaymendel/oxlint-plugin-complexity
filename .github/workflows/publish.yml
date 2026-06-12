@@ -1,0 +1,86 @@
+name: Publish
+
+# Publishes the package to npm when a version tag (vX.Y.Z) is pushed.
+# Auth uses npm trusted publishing (OIDC) — no NPM_TOKEN secret required.
+# Configure the trusted publisher once at:
+#   https://www.npmjs.com/package/oxlint-plugin-complexity/access
+#   -> Trusted Publishers -> GitHub Actions
+#   repo: itaymendel/oxlint-plugin-complexity, workflow: publish.yml
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write # OIDC token for npm trusted publishing + provenance
+      contents: write # create the GitHub Release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Check types
+        run: pnpm exec tsc --noEmit
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Run tests
+        run: pnpm test:run
+
+      - name: Build
+        run: pnpm build
+
+      - name: Verify tag matches package.json version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          echo "Tag: $TAG_VERSION  package.json: $PKG_VERSION"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag v$TAG_VERSION does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      - name: Upgrade npm for trusted publishing
+        # Trusted publishing (OIDC) requires npm >= 11.5.1; Node 22 ships with npm 10.x.
+        run: npm install -g npm@latest
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Extract this version's section from CHANGELOG.md (between its heading and the next).
+          NOTES="$(awk -v v="$VERSION" '
+            $0 ~ "^## \\[" v "\\]" { flag=1; next }
+            /^## \[/ { flag=0 }
+            flag { print }
+          ' CHANGELOG.md)"
+          if [ -z "$NOTES" ]; then
+            NOTES="Release $GITHUB_REF_NAME"
+          fi
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes "$NOTES"
