@@ -58,19 +58,19 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@oxlint/plugins": "^1.66.0"
+    "@oxlint/plugins": "^1.69.0"
   },
   "devDependencies": {
-    "@types/node": "^22.19.17",
+    "@types/node": "^22.19.20",
     "diff": "^9.0.0",
     "estree-walker": "^3.0.3",
     "husky": "^9.1.7",
-    "oxc-parser": "^0.132.0",
-    "oxlint": "^1.62.0",
+    "oxc-parser": "^0.135.0",
+    "oxlint": "^1.69.0",
     "prettier": "3.8.3",
-    "tsx": "^4.21.0",
+    "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.8"
   },
   "peerDependencies": {
     "diff": ">=5.0.0",
