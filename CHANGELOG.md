@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.4] - 2026-06-12
+
+### Changed
+
+- Bump @oxlint/plugins from 1.66.0 to 1.69.0 (#118)
+- Bump oxlint from 1.66.0 to 1.69.0 (#119)
+- Bump oxc-parser from 0.132.0 to 0.135.0 (#116)
+- Bump @types/node from 22.19.19 to 22.19.20 (#117)
+- Bump tsx from 4.22.3 to 4.22.4 (#114)
+- Bump vitest from 4.1.7 to 4.1.8 (#112)
+
+### Internal
+
+- Add npm publish workflow: pushing a `vX.Y.Z` tag publishes to npm via trusted publishing (OIDC) with provenance and creates a GitHub Release
+
 ## [2.1.3] - 2026-05-24
 
 ### Fixed
