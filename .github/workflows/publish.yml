@@ -31,10 +31,10 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: pnpm
-          # No registry-url / NODE_AUTH_TOKEN on purpose: a configured token
-          # shadows OIDC. Trusted publishing only activates when no auth token
-          # is set, so npm falls through to the OIDC token exchange.
+          # registry-url is required for trusted publishing: it points npm at
+          # the registry to perform the OIDC token exchange. No NODE_AUTH_TOKEN
+          # is set, so npm uses OIDC rather than a stored token.
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -66,7 +66,13 @@ jobs:
 
       - name: Upgrade npm for trusted publishing
         # Trusted publishing (OIDC) requires npm >= 11.5.1; Node 22 ships with npm 10.x.
-        run: npm install -g npm@latest
+        run: |
+          npm install -g npm@latest
+          echo "node $(node -v)"
+          echo "npm  $(npm -v)"
+          node -e 'const [maj,min]=process.versions.node.split(".").map(Number); if (maj<22 || (maj===22 && min<14)) { console.error("Node >= 22.14.0 required for trusted publishing"); process.exit(1); }'
+          NPM_VER="$(npm -v)"
+          node -e 'const [a,b,c]=process.argv[1].split(".").map(Number); if (a<11 || (a===11 && (b<5 || (b===5 && c<1)))) { console.error("npm >= 11.5.1 required for trusted publishing, got "+process.argv[1]); process.exit(1); }' "$NPM_VER"
 
       - name: Publish to npm
         run: npm publish --provenance --access public
