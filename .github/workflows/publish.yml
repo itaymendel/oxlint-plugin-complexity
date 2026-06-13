@@ -31,8 +31,10 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 22
-          registry-url: 'https://registry.npmjs.org'
           cache: pnpm
+          # No registry-url / NODE_AUTH_TOKEN on purpose: a configured token
+          # shadows OIDC. Trusted publishing only activates when no auth token
+          # is set, so npm falls through to the OIDC token exchange.
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
