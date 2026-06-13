@@ -75,7 +75,14 @@ jobs:
           node -e 'const [a,b,c]=process.argv[1].split(".").map(Number); if (a<11 || (a===11 && (b<5 || (b===5 && c<1)))) { console.error("npm >= 11.5.1 required for trusted publishing, got "+process.argv[1]); process.exit(1); }' "$NPM_VER"
 
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: |
+          # setup-node (with registry-url) exports a placeholder NODE_AUTH_TOKEN
+          # and writes `_authToken=${NODE_AUTH_TOKEN}` into .npmrc. That bogus
+          # token shadows OIDC, so npm tries token auth and gets a 404. Unset it
+          # so the token resolves empty and npm uses the OIDC trusted-publishing
+          # exchange instead.
+          unset NODE_AUTH_TOKEN
+          npm publish --provenance --access public
 
       - name: Create GitHub Release
         env:
