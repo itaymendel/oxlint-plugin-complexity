@@ -4,9 +4,7 @@ export type { Rule, Context, Visitor, VisitorWithHooks, Plugin } from '@oxlint/p
 
 export type ESTreeNode = ESTree.Node;
 export type FunctionNode =
-  | ESTree.Function
-  | ESTree.ArrowFunctionExpression
-  | ESTree.MethodDefinition;
+  ESTree.Function | ESTree.ArrowFunctionExpression | ESTree.MethodDefinition;
 
 export type LogicalExpressionNode = ESTree.LogicalExpression;
 export type ConditionalExpressionNode = ESTree.ConditionalExpression;
