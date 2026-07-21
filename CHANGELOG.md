@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.6] - 2026-07-21
+
+### Changed
+
+- Bump @oxlint/plugins from 1.73.0 to 1.74.0 (#143)
+- Bump oxlint from 1.73.0 to 1.74.0 (#145)
+- Bump oxc-parser from 0.139.0 to 0.140.0 (#147)
+- Bump typescript from 6.0.3 to 7.0.2 (#148)
+- Bump @types/node from 22.20.0 to 22.20.1 (#144)
+- Bump tsx from 4.23.0 to 4.23.1 (#146)
+- Bump prettier from 3.9.4 to 3.9.6 (#150)
+- Bump actions/setup-node from 6 to 7 (#142)
+
 ## [2.1.5] - 2026-07-08
 
 ### Changed
