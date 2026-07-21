@@ -5,6 +5,16 @@ updates:
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 10
+    groups:
+      # Batch routine minor/patch bumps into a single PR so they share one
+      # lockfile update and can't conflict with each other. Major bumps are
+      # intentionally excluded so they arrive as individual PRs for review.
+      npm-dependencies:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
     ignore:
       - dependency-name: '@types/node'
         update-types:
@@ -15,3 +25,8 @@ updates:
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 5
+    groups:
+      # Action version bumps are low-risk; batch them all (including majors).
+      github-actions:
+        patterns:
+          - '*'
