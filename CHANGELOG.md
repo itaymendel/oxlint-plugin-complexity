@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.8] - 2026-08-28
+
+### Changed
+
+- Bump @oxlint/plugins from 1.76.0 to 1.79.0 (#155)
+- Bump oxlint from 1.76.0 to 1.79.0 (#155)
+- Bump oxc-parser from 0.142.0 to 0.146.0 (#155)
+- Bump tsx from 4.23.1 to 4.23.12 (#155)
+- Bump vitest from 4.1.10 to 4.1.11 (#155)
+- Bump pnpm/action-setup from 6.0.9 to 6.0.10 (#153)
+
 ## [2.1.7] - 2026-08-09
 
 ### Changed
@@ -249,7 +260,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI pipeline
 - Pre-commit hooks with Husky
 
-[Unreleased]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v2.1.7...HEAD
+[Unreleased]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v2.1.8...HEAD
+[2.1.8]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v2.1.7...v2.1.8
 [2.1.7]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v2.1.6...v2.1.7
 [2.1.6]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v2.1.5...v2.1.6
 [2.1.5]: https://github.com/itaymendel/oxlint-plugin-complexity/compare/v2.1.4...v2.1.5
