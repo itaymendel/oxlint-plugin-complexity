@@ -209,6 +209,34 @@ describe('Smart Extraction Detection', () => {
       expect(flow.hasThisReference).toBe(false);
     });
 
+    it('does not flag this inside class members', () => {
+      const code = `
+        function outer(items) {
+          let count = 0;
+          for (const item of items) {
+            if (item.active) {
+              if (item.value > 0) {
+                class Inner {
+                  field = this.base + 1;
+                  static { count++; }
+                  method() { return this.field; }
+                }
+                count++;
+              }
+            }
+          }
+          return count;
+        }
+      `;
+
+      const results = calculateCognitiveWithTracking(code, 'test.js');
+      const result = results.get('outer')!;
+      const candidate = buildCandidateForRange(result, 2, -1);
+      const flow = analyzeVariableFlow(candidate, result.variables, result.node);
+
+      expect(flow.hasThisReference).toBe(false);
+    });
+
     it('reports no this references when none present', () => {
       const code = `
         function outer(items) {

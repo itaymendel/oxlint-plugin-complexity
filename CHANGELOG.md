@@ -19,7 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Cognitive complexity: `else` blocks and `switch` cases now get the nesting increment required by the spec; `analyzeFileComplexity` and the lint rule now agree on nested ternaries.
+- Cognitive complexity: `else` blocks and `switch` cases now get the nesting increment required by the spec; a function used directly as a branch no longer inflates the nesting of everything after it; `analyzeFileComplexity` and the lint rule now agree on nested ternaries.
+- Extraction suggestions no longer flag `this` used inside a class declared within the candidate block.
 - Functions assigned to a class field through a TS cast are named after the field instead of `<anonymous>`.
 
 ## [2.1.8] - 2026-08-28

@@ -124,6 +124,9 @@ export function createCombinedComplexityVisitor(
   }
 
   function addNestingNode(node: ESTreeNode): void {
+    // A function branch/body opens its own scope, which tracks its own nesting;
+    // the enclosing scope must never hold a marker for it.
+    if (isFunctionNode(node)) return;
     const scope = getScopeFor(node);
     if (scope) {
       scope.nestingNodes.add(node);

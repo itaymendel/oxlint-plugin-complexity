@@ -165,7 +165,8 @@ function walkInRange(
 ): void {
   function walk(n: ESTreeNode): void {
     if (isOutsideRange(n, startLine, endLine)) return;
-    if (n !== root && isFunctionNode(n)) return;
+    // Nested functions and class members have their own `this`/scope
+    if (n !== root && (isFunctionNode(n) || n.type === 'ClassBody')) return;
     visitor(n);
     walkChildren(n, walk);
   }
