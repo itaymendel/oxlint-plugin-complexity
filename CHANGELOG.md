@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Bump @oxlint/plugins from 1.79.0 to 1.81.0 (#158)
+- Bump oxlint from 1.79.0 to 1.81.0 (#158)
+- Bump oxc-parser from 0.146.0 to 0.148.0 (#158)
+- Bump tsx from 4.23.12 to 4.23.13 (#158)
+- Bump pnpm/action-setup from 6.0.10 to 6.1.0 (#157)
+
 ## [2.1.8] - 2026-08-28
 
 ### Changed
