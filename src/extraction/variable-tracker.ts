@@ -77,6 +77,20 @@ function isDestructuringPattern(parent: ESTreeNode | undefined): boolean {
   );
 }
 
+function mapVariableDefinitionType(
+  def: { type: string; parent: ESTreeNode | null },
+  variable: Variable
+): VariableInfo['declarationType'] {
+  const firstIdentifier = variable.identifiers[0] as IdentifierNode | undefined;
+  if (isDestructuringPattern(firstIdentifier?.parent)) {
+    return 'destructured';
+  }
+  const declParent = def.parent as ESTreeNode & { kind?: string };
+  if (declParent?.kind === 'const') return 'const';
+  if (declParent?.kind === 'let') return 'let';
+  return 'var';
+}
+
 /**
  * Map oxlint DefinitionType to our declarationType.
  */
@@ -88,16 +102,8 @@ function mapDefinitionType(
     case 'Parameter':
     case 'CatchClause':
       return 'param';
-    case 'Variable': {
-      const firstIdentifier = variable.identifiers[0] as IdentifierNode | undefined;
-      if (isDestructuringPattern(firstIdentifier?.parent)) {
-        return 'destructured';
-      }
-      const declParent = def.parent as ESTreeNode & { kind?: string };
-      if (declParent?.kind === 'const') return 'const';
-      if (declParent?.kind === 'let') return 'let';
-      return 'var';
-    }
+    case 'Variable':
+      return mapVariableDefinitionType(def, variable);
     case 'ImportBinding':
     case 'ClassName':
     case 'FunctionName':

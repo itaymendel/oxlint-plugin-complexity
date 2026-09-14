@@ -5,8 +5,8 @@ import {
   createCombinedComplexityVisitor,
   type CombinedComplexityResult,
 } from './combined-visitor.js';
-import { getFunctionName } from './utils.js';
-import type { ESTreeNode, FunctionNode, ComplexityPoint, Context } from './types.js';
+import { getDisplayFunctionName } from './utils.js';
+import type { ESTreeNode, ComplexityPoint, Context } from './types.js';
 
 export interface FunctionComplexityResult {
   name: string;
@@ -94,13 +94,13 @@ export function walkAndDispatch(
         configurable: true,
       });
 
-      visitor[esNode.type]?.(esNode);
       visitor['*']?.(esNode);
+      visitor[esNode.type]?.(esNode);
     },
     leave(node) {
       const esNode = node as unknown as ESTreeNode;
-      visitor[`${esNode.type}:exit`]?.(esNode);
       visitor['*:exit']?.(esNode);
+      visitor[`${esNode.type}:exit`]?.(esNode);
     },
   });
 }
@@ -124,11 +124,7 @@ export function analyzeFileComplexity(code: string, filename: string): FileAnaly
   const context = createStandaloneContext(code);
 
   const onComplexityCalculated = (result: CombinedComplexityResult, node: ESTreeNode) => {
-    const funcNode = node as ESTreeNode & { parent?: ESTreeNode };
-    const name = getFunctionName(funcNode as FunctionNode, funcNode.parent);
-    const displayName =
-      name === '<arrow>' || name === '<anonymous>' ? `anonymous_${functionIndex + 1}` : name;
-    functionIndex++;
+    const displayName = getDisplayFunctionName(node, functionIndex++);
 
     const loc = node.loc;
     functions.push({

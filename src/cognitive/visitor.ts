@@ -15,7 +15,12 @@ import type {
 } from '../types.js';
 import { isElseIf, isDefaultValuePattern, isJsxShortCircuit } from './patterns.js';
 import { isRecursiveCall } from './recursion.js';
-import { createComplexityPoint, DEFAULT_COMPLEXITY_INCREMENT, getFunctionName } from '../utils.js';
+import {
+  createComplexityPoint,
+  DEFAULT_COMPLEXITY_INCREMENT,
+  getFunctionName,
+  isFunctionNode,
+} from '../utils.js';
 import { createComplexityVisitor } from '../visitor.js';
 import { getVariablesForFunction } from '../extraction/variable-tracker.js';
 import type { VariableInfo } from '../extraction/types.js';
@@ -27,7 +32,7 @@ interface CognitiveFunctionScope extends FunctionScope {
 }
 
 interface VisitorContext {
-  getCurrentScope: () => CognitiveFunctionScope | undefined;
+  getScopeFor: (node: ESTreeNode) => CognitiveFunctionScope | undefined;
   addComplexity: (node: ESTreeNode, message: string) => void;
   addStructuralComplexity: (node: ESTreeNode, message: string) => void;
   addNestingNode: (node: ESTreeNode) => void;
@@ -36,18 +41,18 @@ interface VisitorContext {
 
 function handleNestingEnter(
   node: ESTreeNode,
-  getCurrentScope: () => CognitiveFunctionScope | undefined
+  getScopeFor: (node: ESTreeNode) => CognitiveFunctionScope | undefined
 ): void {
-  const scope = getCurrentScope();
+  const scope = getScopeFor(node);
   if (!scope?.nestingNodes.has(node)) return;
   scope.nestingLevel++;
 }
 
 function handleNestingExit(
   node: ESTreeNode,
-  getCurrentScope: () => CognitiveFunctionScope | undefined
+  getScopeFor: (node: ESTreeNode) => CognitiveFunctionScope | undefined
 ): void {
-  const scope = getCurrentScope();
+  const scope = getScopeFor(node);
   if (!scope?.nestingNodes.has(node)) return;
   scope.nestingLevel--;
   scope.nestingNodes.delete(node);
@@ -64,12 +69,12 @@ function handleIfStatement(node: IfStatementNode, ctx: VisitorContext): void {
 
   if (node.alternate && node.alternate.type !== 'IfStatement') {
     ctx.addNestingNode(node.alternate as ESTreeNode);
-    ctx.addComplexity(node.alternate as ESTreeNode, 'else');
+    ctx.addComplexity(node, 'else');
   }
 }
 
 function handleLogicalExpression(node: LogicalExpressionNode, ctx: VisitorContext): void {
-  if (!ctx.getCurrentScope()) return;
+  if (!ctx.getScopeFor(node)) return;
   if (isJsxShortCircuit(node) || isDefaultValuePattern(node, ctx.ruleContext)) return;
 
   const parent = node.parent as LogicalExpressionNode | undefined;
@@ -100,12 +105,12 @@ function buildVisitorHandlers(baseVisitor: Partial<Visitor>, ctx: VisitorContext
   return {
     ...baseVisitor,
 
-    '*': (node: ESTreeNode) => handleNestingEnter(node, ctx.getCurrentScope),
-    '*:exit': (node: ESTreeNode) => handleNestingExit(node, ctx.getCurrentScope),
+    '*': (node: ESTreeNode) => handleNestingEnter(node, ctx.getScopeFor),
+    '*:exit': (node: ESTreeNode) => handleNestingExit(node, ctx.getScopeFor),
 
     CallExpression(node: CallExpressionNode): void {
-      const scope = ctx.getCurrentScope();
-      if (scope?.name && isRecursiveCall(node, scope.name)) {
+      const scope = ctx.getScopeFor(node);
+      if (scope?.name && isFunctionNode(scope.node) && isRecursiveCall(node, scope.name)) {
         scope.hasRecursiveCall = true;
       }
     },
@@ -153,8 +158,6 @@ function createCognitiveVisitorCore<TResult extends ComplexityResult>(
   context: Context,
   options: CognitiveVisitorOptions<TResult>
 ): Visitor {
-  let globalFunctionNestingLevel = 0;
-
   const { context: visitorCtx, baseVisitor } = createComplexityVisitor<CognitiveFunctionScope>({
     createScope: (node, name) => ({
       node,
@@ -166,37 +169,39 @@ function createCognitiveVisitorCore<TResult extends ComplexityResult>(
     }),
 
     onEnterFunction(parentScope, node) {
-      if (globalFunctionNestingLevel === 0) {
+      if (!isFunctionNode(node)) return;
+
+      if (visitorCtx.getFunctionDepth() === 0) {
         options.onEnterTopLevelFunction?.(node);
       }
 
-      if (parentScope && globalFunctionNestingLevel > 0) {
+      if (parentScope && isFunctionNode(parentScope.node)) {
         const functionType =
           node.type === 'ArrowFunctionExpression' ? 'arrow function' : 'function';
         parentScope.points.push(createComplexityPoint(node, `nested ${functionType}`));
       }
-      globalFunctionNestingLevel++;
     },
 
     onExitFunction(scope, node) {
-      globalFunctionNestingLevel--;
       if (scope.hasRecursiveCall) {
         scope.points.push(createComplexityPoint(node, 'recursion'));
       }
     },
 
     onComplexityCalculated(result, node) {
-      const additionalData =
-        globalFunctionNestingLevel === 0 ? (options.onExitTopLevelFunction?.(node) ?? {}) : {};
+      const isTopLevelFunction = isFunctionNode(node) && visitorCtx.getFunctionDepth() === 0;
+      const additionalData = isTopLevelFunction
+        ? (options.onExitTopLevelFunction?.(node) ?? {})
+        : {};
 
       options.onComplexityCalculated({ ...result, ...additionalData } as TResult, node);
     },
   });
 
-  const { getCurrentScope, addComplexity } = visitorCtx;
+  const { getScopeFor, addComplexity } = visitorCtx;
 
   function addStructuralComplexity(node: ESTreeNode, message: string): void {
-    const scope = getCurrentScope();
+    const scope = getScopeFor(node);
     if (scope) {
       scope.points.push(
         createComplexityPoint(node, message, DEFAULT_COMPLEXITY_INCREMENT, scope.nestingLevel)
@@ -205,14 +210,17 @@ function createCognitiveVisitorCore<TResult extends ComplexityResult>(
   }
 
   function addNestingNode(node: ESTreeNode): void {
-    const scope = getCurrentScope();
+    // A function branch/body opens its own scope, which tracks its own nesting;
+    // the enclosing scope must never hold a marker for it.
+    if (isFunctionNode(node)) return;
+    const scope = getScopeFor(node);
     if (scope) {
       scope.nestingNodes.add(node);
     }
   }
 
   return buildVisitorHandlers(baseVisitor, {
-    getCurrentScope,
+    getScopeFor,
     addComplexity,
     addStructuralComplexity,
     addNestingNode,

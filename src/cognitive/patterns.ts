@@ -60,7 +60,7 @@ export function isDefaultValuePattern(node: LogicalExpressionNode, context: Cont
   const root = getChainRoot(node, DEFAULT_VALUE_OPERATORS);
   const parent = root.parent;
 
-  if (parent?.type === 'VariableDeclarator') {
+  if (parent?.type === 'VariableDeclarator' || parent?.type === 'PropertyDefinition') {
     return true;
   }
 

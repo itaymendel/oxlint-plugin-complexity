@@ -1,4 +1,4 @@
-// @complexity GenericList:cyclomatic=2 isEmpty:cyclomatic=2,cognitive=1
+// @complexity GenericList:cyclomatic=3 isEmpty:cyclomatic=2,cognitive=1
 
 // Helper function (NOT a React component)
 function isEmpty<T>(items: T[]): boolean {

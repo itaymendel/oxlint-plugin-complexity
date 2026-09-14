@@ -1,4 +1,5 @@
 import type { ESTreeNode } from '../types.js';
+import { isFunctionNode } from '../utils.js';
 import type {
   VariableInfo,
   ExtractionCandidate,
@@ -111,12 +112,6 @@ function detectClosures(
   return closures;
 }
 
-const NESTED_FUNCTION_TYPES = new Set([
-  'FunctionDeclaration',
-  'FunctionExpression',
-  'ArrowFunctionExpression',
-]);
-
 const SKIP_WALK_KEYS = new Set(['parent', 'loc', 'range']);
 
 function isNodeLike(value: unknown): value is ESTreeNode {
@@ -170,7 +165,8 @@ function walkInRange(
 ): void {
   function walk(n: ESTreeNode): void {
     if (isOutsideRange(n, startLine, endLine)) return;
-    if (n !== root && NESTED_FUNCTION_TYPES.has(n.type)) return;
+    // Nested functions and class members have their own `this`/scope
+    if (n !== root && (isFunctionNode(n) || n.type === 'ClassBody')) return;
     visitor(n);
     walkChildren(n, walk);
   }

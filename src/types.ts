@@ -4,12 +4,18 @@ export type { Rule, Context, Visitor, VisitorWithHooks, Plugin } from '@oxlint/p
 
 export type ESTreeNode = ESTree.Node;
 export type FunctionNode =
-  ESTree.Function | ESTree.ArrowFunctionExpression | ESTree.MethodDefinition;
+  | ESTree.Function
+  | ESTree.ArrowFunctionExpression
+  | ESTree.MethodDefinition
+  | ESTree.PropertyDefinition
+  | ESTree.StaticBlock;
 
 export type LogicalExpressionNode = ESTree.LogicalExpression;
 export type ConditionalExpressionNode = ESTree.ConditionalExpression;
 export type CallExpressionNode = ESTree.CallExpression;
 export type AssignmentExpressionNode = ESTree.AssignmentExpression;
+export type MemberExpressionNode = ESTree.MemberExpression;
+export type PropertyDefinitionNode = ESTree.PropertyDefinition;
 
 export type IfStatementNode = ESTree.IfStatement;
 export type SwitchStatementNode = ESTree.SwitchStatement;

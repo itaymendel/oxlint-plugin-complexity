@@ -105,10 +105,11 @@ export function findExtractionCandidates(
   totalComplexity: number,
   options?: ExtractionOptions
 ): ExtractionCandidate[] {
-  const minPercentage = options?.minComplexityPercentage ?? DEFAULT_MIN_COMPLEXITY_PERCENTAGE;
-  const maxPercentage = options?.maxComplexityPercentage ?? DEFAULT_MAX_COMPLEXITY_PERCENTAGE;
-  const maxLineGap = options?.maxLineGap ?? DEFAULT_MAX_LINE_GAP;
-  const maxCandidates = options?.maxCandidates ?? DEFAULT_MAX_CANDIDATES;
+  const opts = options ?? {};
+  const minPercentage = opts.minComplexityPercentage ?? DEFAULT_MIN_COMPLEXITY_PERCENTAGE;
+  const maxPercentage = opts.maxComplexityPercentage ?? DEFAULT_MAX_COMPLEXITY_PERCENTAGE;
+  const maxLineGap = opts.maxLineGap ?? DEFAULT_MAX_LINE_GAP;
+  const maxCandidates = opts.maxCandidates ?? DEFAULT_MAX_CANDIDATES;
 
   if (points.length === 0 || totalComplexity === 0) {
     return [];
