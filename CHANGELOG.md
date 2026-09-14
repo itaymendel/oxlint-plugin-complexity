@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **BREAKING:** Cyclomatic complexity now counts optional chaining, default parameters and destructuring defaults (+1 each), and scores class field initializers / `static {}` blocks as their own units. Expect more `cyclomatic` warnings on existing code. See [#159](https://github.com/itaymendel/oxlint-plugin-complexity/issues/159).
 - `analyzeFileComplexity` now returns entries for class field initializers and static blocks.
+- Bump @oxlint/plugins from 1.79.0 to 1.81.0 (#158)
+- Bump oxlint from 1.79.0 to 1.81.0 (#158)
+- Bump oxc-parser from 0.146.0 to 0.148.0 (#158)
+- Bump tsx from 4.23.12 to 4.23.13 (#158)
+- Bump pnpm/action-setup from 6.0.10 to 6.1.0 (#157)
 
 ### Fixed
 
