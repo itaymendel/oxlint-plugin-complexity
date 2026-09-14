@@ -31,8 +31,7 @@ function mixedChain(a, b, c, d, e, f) {
 }
 
 // Complex nested: (a || b) && (c || d) && (e || f)
-// cognitive: 3 (1 for && sequence, 3 for each ||... wait that's 4)
-// Actually testing shows cognitive=3, cyclomatic=6
+// cognitive: 4 (1 for the && sequence + 1 for each of the three || sequences), cyclomatic: 6
 function complexNested(a, b, c, d, e, f) {
   return (a || b) && (c || d) && (e || f);
 }

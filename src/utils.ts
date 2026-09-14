@@ -1,4 +1,4 @@
-import type { ESTreeNode, FunctionNode, ComplexityPoint } from './types.js';
+import type { ESTreeNode, FunctionNode, ComplexityPoint, PropertyDefinitionNode } from './types.js';
 
 /** Type-safe `includes` for readonly const arrays. */
 export function includes<T extends string>(array: readonly T[], value: string): value is T {
@@ -14,6 +14,36 @@ export const LOGICAL_OPERATORS = ['&&', '||', '??'] as const;
 
 /** Logical assignment operators (short-circuit assignment), used by cyclomatic complexity. */
 export const LOGICAL_ASSIGNMENT_OPERATORS = ['||=', '&&=', '??='] as const;
+
+const FUNCTION_NODE_TYPES = new Set([
+  'FunctionDeclaration',
+  'FunctionExpression',
+  'ArrowFunctionExpression',
+]);
+
+const TRANSPARENT_EXPRESSION_TYPES = new Set([
+  'ParenthesizedExpression',
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSNonNullExpression',
+  'TSTypeAssertion',
+]);
+
+export function isFunctionNode(node: ESTreeNode): boolean {
+  return FUNCTION_NODE_TYPES.has(node.type);
+}
+
+function unwrapExpression(node: ESTreeNode): ESTreeNode {
+  let current = node;
+  while (TRANSPARENT_EXPRESSION_TYPES.has(current.type) && 'expression' in current) {
+    current = current.expression as ESTreeNode;
+  }
+  return current;
+}
+
+export function isFieldInitializerUnit(node: PropertyDefinitionNode): boolean {
+  return node.value !== null && !isFunctionNode(unwrapExpression(node.value));
+}
 
 const DEFAULT_LOCATION = {
   start: { line: 0, column: 0 },
@@ -90,15 +120,34 @@ function getNameFromParent(parent?: ESTreeNode): string | null {
   return null;
 }
 
+/** Skip parenthesised / TS-cast wrappers so `x = (() => {}) as T` is still named `x`. */
+function getNamingParent(parent?: ESTreeNode): ESTreeNode | undefined {
+  let current = parent;
+  while (current && TRANSPARENT_EXPRESSION_TYPES.has(current.type)) {
+    current = current.parent ?? undefined;
+  }
+  return current;
+}
+
 export function getFunctionName(node: FunctionNode, parent?: ESTreeNode): string {
   const fromNode =
     getNestedName(node as ESTreeNode, 'id') ?? getNestedName(node as ESTreeNode, 'key');
   if (fromNode) return fromNode;
 
-  const fromParent = getNameFromParent(parent);
+  const fromParent = getNameFromParent(getNamingParent(parent));
   if (fromParent) return fromParent;
 
+  if (node.type === 'StaticBlock') return '<static block>';
   return node.type === 'ArrowFunctionExpression' ? '<arrow>' : '<anonymous>';
+}
+
+/**
+ * Function name for display in results, with `<...>` placeholders replaced by an
+ * indexed `anonymous_N` (N = 1-based position in completion order).
+ */
+export function getDisplayFunctionName(node: ESTreeNode, index: number): string {
+  const name = getFunctionName(node as FunctionNode, node.parent ?? undefined);
+  return name.startsWith('<') ? `anonymous_${index + 1}` : name;
 }
 
 export function summarizeComplexity(

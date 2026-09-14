@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-// @complexity useCounter:cyclomatic=1,cognitive=1
+// @complexity useCounter:cyclomatic=2,cognitive=1
 import { ref, computed } from 'vue';
 
 function useCounter(initial: number = 0) {

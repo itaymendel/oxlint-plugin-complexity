@@ -7,9 +7,9 @@ import {
   createCombinedComplexityVisitor,
   type CombinedComplexityResult,
 } from '#src/combined-visitor.js';
-import { getFunctionName as getProductionFunctionName } from '#src/utils.js';
+import { getDisplayFunctionName } from '#src/utils.js';
 import { createLineOffsetTable, offsetToLineCol, walkAndDispatch } from '#src/standalone.js';
-import type { ESTreeNode, FunctionNode, ComplexityResult, Context } from '#src/types.js';
+import type { ESTreeNode, ComplexityResult, Context } from '#src/types.js';
 import type { ScopeManager } from 'oxlint/plugins';
 import { analyzeScope } from './test-scope-analyzer.js';
 
@@ -80,17 +80,9 @@ export function createMockContext(ast?: ESTreeNode): Context {
   } as unknown as Context;
 }
 
-function getFunctionName(node: ESTreeNode, index: number): string {
-  const funcNode = node as ESTreeNode & { parent?: ESTreeNode };
-  const name = getProductionFunctionName(funcNode as FunctionNode, funcNode.parent);
-
-  // Replace production anonymous placeholders with indexed names for clearer test output
-  if (name === '<arrow>' || name === '<anonymous>') {
-    return `anonymous_${index + 1}`;
-  }
-
-  return name;
-}
+// Fixture annotations are whitespace-split, so placeholder names like `<static block>`
+// can't be keys; the production display name maps them to `anonymous_N`.
+const getFunctionName = getDisplayFunctionName;
 
 /**
  * Walk an AST using estree-walker and call visitor handlers.

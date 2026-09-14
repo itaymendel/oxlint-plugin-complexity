@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-09-14
+
+### Changed
+
+- **BREAKING:** Cyclomatic complexity now counts optional chaining, default parameters and destructuring defaults (+1 each), and scores class field initializers / `static {}` blocks as their own units. Expect more `cyclomatic` warnings on existing code. See [#159](https://github.com/itaymendel/oxlint-plugin-complexity/issues/159).
+- `analyzeFileComplexity` now returns entries for class field initializers and static blocks.
+
+### Fixed
+
+- Cognitive complexity: `else` blocks and `switch` cases now get the nesting increment required by the spec; `analyzeFileComplexity` and the lint rule now agree on nested ternaries.
+- Functions assigned to a class field through a TS cast are named after the field instead of `<anonymous>`.
+
 ## [2.1.8] - 2026-08-28
 
 ### Changed

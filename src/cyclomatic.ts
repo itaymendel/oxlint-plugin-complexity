@@ -5,6 +5,8 @@ import type {
   LogicalExpressionNode,
   SwitchCaseNode,
   AssignmentExpressionNode,
+  MemberExpressionNode,
+  CallExpressionNode,
   ComplexityResult,
 } from './types.js';
 import { createComplexityVisitor } from './visitor.js';
@@ -29,7 +31,12 @@ import {
  * - ConditionalExpression (ternary): +1
  * - LogicalExpression (&&, ||, ??): +1
  * - Logical assignment (&&=, ||=, ??=): +1
+ * - AssignmentPattern (default params, destructuring defaults): +1
+ * - Optional chaining (a?.b, a?.[x], a?.()): +1 per `?.`
+ *
+ * Units: functions, arrow functions, class field initializers, class static blocks.
  */
+// eslint-disable-next-line complexity/complexity -- Visitor factory pattern requires many nested handlers
 export function createCyclomaticVisitor(
   onComplexityCalculated: (result: ComplexityResult, node: ESTreeNode) => void
 ): Visitor {
@@ -101,6 +108,22 @@ export function createCyclomaticVisitor(
     AssignmentExpression(node: AssignmentExpressionNode): void {
       if (includes(LOGICAL_ASSIGNMENT_OPERATORS, node.operator)) {
         addComplexity(node, node.operator);
+      }
+    },
+
+    AssignmentPattern(node: ESTreeNode): void {
+      addComplexity(node, 'default value');
+    },
+
+    MemberExpression(node: MemberExpressionNode): void {
+      if (node.optional) {
+        addComplexity(node, '?.');
+      }
+    },
+
+    CallExpression(node: CallExpressionNode): void {
+      if (node.optional) {
+        addComplexity(node, '?.()');
       }
     },
   } as Visitor;

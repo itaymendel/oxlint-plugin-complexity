@@ -1,4 +1,4 @@
-// @complexity UserCard:cyclomatic=3,cognitive=0
+// @complexity UserCard:cyclomatic=4,cognitive=0
 interface User {
   id: string;
   name: string;

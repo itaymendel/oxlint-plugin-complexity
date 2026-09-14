@@ -103,7 +103,7 @@ function processData(items, mode, config) {
 
 Counts decision points in code. [Learn more](https://en.wikipedia.org/wiki/Cyclomatic_complexity)
 
-**+1 for:** `if`, `for`, `for...in`, `for...of`, `while`, `do...while`, `case`, `catch`, `? :`, `&&`, `||`, `??`
+**+1 for:** `if`, `for`, `for...in`, `for...of`, `while`, `do...while`, `case`, `catch`, `? :`, `&&`, `||`, `??`, `||=`/`&&=`/`??=`, `?.` (each optional member/call), default values (`fn(x = 1)`, `{ x = 1 } = y`)
 
 ### Cognitive Complexity
 

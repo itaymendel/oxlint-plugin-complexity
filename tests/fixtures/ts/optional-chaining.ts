@@ -1,4 +1,4 @@
-// @complexity getNestedValue:cyclomatic=1,cognitive=0 conditionalAccess:cyclomatic=2,cognitive=1
+// @complexity getNestedValue:cyclomatic=3,cognitive=0 conditionalAccess:cyclomatic=3,cognitive=1
 interface Nested {
   level1?: {
     level2?: {
@@ -8,7 +8,7 @@ interface Nested {
 }
 
 function getNestedValue(obj: Nested): string | undefined {
-  // Optional chaining doesn't add complexity
+  // Each ?. is a cyclomatic branch (+2); cognitive ignores optional chaining
   return obj.level1?.level2?.value;
 }
 
