@@ -70,7 +70,7 @@
     "prettier": "3.9.6",
     "tsx": "^4.23.0",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^5.0.0"
   },
   "peerDependencies": {
     "diff": ">=5.0.0",
