@@ -211,12 +211,9 @@ export function createCognitiveHandlers<T extends CognitiveFunctionScope>(
       format,
     }),
 
-    onEnterFunction(parentScope: T | undefined, node: ESTreeNode): void {
-      if (parentScope && isFunctionNode(node) && isFunctionNode(parentScope.node)) {
-        const functionType =
-          node.type === 'ArrowFunctionExpression' ? 'arrow function' : 'function';
-        getPoints(parentScope).push(createComplexityPoint(node, `nested ${functionType}`));
-      }
+    onEnterFunction(parentScope: T | undefined, scope: T): void {
+      // Reporting units inherit nesting, but keep their complexity points separate.
+      scope.nestingLevel = parentScope ? parentScope.nestingLevel + 1 : 0;
     },
 
     onExitFunction(scope: T, node: ESTreeNode): void {

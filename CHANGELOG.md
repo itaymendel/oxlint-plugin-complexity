@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Unify cognitive complexity handlers and route fixture tests through the lint rule's visitor.
 
+### Fixed
+
+- Fix nested cognitive complexity scoring: remove parent function penalties and inherit enclosing nesting + 1 (#165).
+
 ## [3.0.1] - 2026-09-29
 
 ### Changed

@@ -1,4 +1,4 @@
-// @complexity analyzeData:cyclomatic=11,cognitive=29
+// @complexity analyzeData:cyclomatic=11,cognitive=28 processor:cyclomatic=2,cognitive=2
 // TypeScript function with type annotations to test type preservation in suggestions
 interface DataItem {
   id: string;
@@ -36,7 +36,7 @@ function analyzeData(items: DataItem[], config: Config): number[] {
 
   // Block with closure over mutable state (problematic)
   const processor = (val: number) => {
-    if (val > 0) {  // +1
+    if (val > 0) {  // +2 (inherited function nesting=1)
       accumulated += val;  // Closure over mutable
     }
   };

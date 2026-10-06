@@ -76,7 +76,8 @@ export function createComplexityVisitor<T extends FunctionScope>(
   function enterFunction(node: ESTreeNode): void {
     const funcNode = node as FunctionNode;
     const name = getFunctionName(funcNode, node.parent ?? undefined);
-    const parentScope = getCurrentScope();
+    // Computed keys and decorators belong to the enclosing scope, not the field value.
+    const parentScope = getScopeFor(node);
     const scope = config.createScope(node, name);
 
     scopeStack.push(scope);

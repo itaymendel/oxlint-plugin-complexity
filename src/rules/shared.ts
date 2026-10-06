@@ -10,7 +10,6 @@ import { getVariablesForFunction } from '../extraction/variable-tracker.js';
 
 export function normalizeCognitiveCategory(category: string): string {
   if (category.startsWith('logical operator')) return 'logical operators';
-  if (category.startsWith('nested ')) return 'nested functions';
   if (category.startsWith('break to') || category.startsWith('continue to')) return 'labeled jumps';
   return category;
 }

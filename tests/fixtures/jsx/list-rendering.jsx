@@ -1,4 +1,4 @@
-// @complexity ListRendering:cyclomatic=1,cognitive=1 FilteredList:cyclomatic=1,cognitive=2
+// @complexity ListRendering:cyclomatic=1,cognitive=0 FilteredList:cyclomatic=1,cognitive=0
 function ListRendering({ items }) {
   return (
     <ul>
