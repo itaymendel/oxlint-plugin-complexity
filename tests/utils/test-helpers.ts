@@ -119,7 +119,7 @@ export function parseAndPrepareAst(
 }
 
 /**
- * Exercise the separate public visitor factories for compatibility checks.
+ * Exercise the internal single-metric visitor factories for compatibility checks.
  */
 function calculateStandaloneComplexityWithVisitor(
   code: string,

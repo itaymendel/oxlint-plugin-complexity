@@ -22,7 +22,7 @@ export interface CognitiveFunctionScope extends FunctionScope {
   hasRecursiveCall: boolean;
 }
 
-// Preserve each public visitor's existing diagnostic presentation, not separate scoring rules.
+// Preserve the internal extraction visitor's and combined visitor's existing point formats.
 const POINT_FORMATS = {
   standalone: {
     forIn: 'for...in',

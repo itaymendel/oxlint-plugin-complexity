@@ -99,6 +99,8 @@ function processData(items, mode, config) {
 }
 ```
 
+TypeScript users can import `ComplexityOptions` from `oxlint-plugin-complexity` to type the rule options.
+
 ### Cyclomatic Complexity
 
 Counts decision points in code. [Learn more](https://en.wikipedia.org/wiki/Cyclomatic_complexity)
@@ -218,24 +220,18 @@ for (const file of result.files) {
 }
 ```
 
-## Migration from v0.x
+## Migration to v4 (for library usage)
 
-Replace the removed `max-cyclomatic` / `max-cognitive` rules with the combined `complexity` rule:
+- Replace `MaxCyclomaticOptions` / `MaxCognitiveOptions` with `ComplexityOptions`, using `cyclomatic`
+  and `cognitive` instead of `max`.
+- Replace `createCognitiveVisitor` / `createCyclomaticVisitor` with
+  `createCombinedComplexityVisitor(context, callback)`. Results contain `cyclomatic`, `cognitive`,
+  `cyclomaticPoints`, and `cognitivePoints`; both metrics now require an oxlint `Context`.
+- `createComplexityVisitor`, `VisitorContext`, and `FunctionScope` are now internal.
 
-```diff
-// .oxlintrc.json
-{
-  "jsPlugins": ["oxlint-plugin-complexity"],
-  "rules": {
--   "complexity/max-cyclomatic": ["error", { "max": 20 }],
--   "complexity/max-cognitive": ["error", { "max": 15 }]
-+   "complexity/complexity": ["error", {
-+     "cyclomatic": 20,
-+     "cognitive": 15
-+   }]
-  }
-}
-```
+When migrating individual visitors, loop labels become `for-in`, `for-of`, and `do-while`.
+Cognitive recursion points now identify the first recursive call in traversal order, rather than the
+whole function on exit. The `/standalone` and `/diff` APIs are unchanged by this cleanup.
 
 ## Attribution
 

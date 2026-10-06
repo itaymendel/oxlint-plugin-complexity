@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING:** Replace the exported `MaxCyclomaticOptions` and `MaxCognitiveOptions` types with `ComplexityOptions`. Use `cyclomatic` and `cognitive` instead of the obsolete `max` field.
+- **BREAKING:** Remove public exports for `createCognitiveVisitor`, `createCyclomaticVisitor`, `createComplexityVisitor`, `VisitorContext`, and `FunctionScope`. Use `createCombinedComplexityVisitor` for AST analysis or `/standalone` for source strings. Individual visitor migrations change loop labels and cognitive recursion point locations and ordering; see the README migration guide.
 - Unify cognitive complexity handlers and route fixture tests through the lint rule's visitor.
 
 ### Fixed

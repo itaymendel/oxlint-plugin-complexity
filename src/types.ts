@@ -45,12 +45,10 @@ export interface FunctionScope {
   points: ComplexityPoint[];
 }
 
-export interface MaxCyclomaticOptions {
-  max?: number;
-}
-
-export interface MaxCognitiveOptions {
-  max?: number;
+export interface ComplexityOptions {
+  cyclomatic?: number;
+  cognitive?: number;
+  minLines?: number;
   enableExtraction?: boolean;
   extractionMultiplier?: number;
   minExtractionPercentage?: number;

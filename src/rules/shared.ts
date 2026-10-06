@@ -1,4 +1,4 @@
-import type { Context, ComplexityPoint, ESTreeNode, MaxCognitiveOptions } from '../types.js';
+import type { Context, ComplexityPoint, ESTreeNode, ComplexityOptions } from '../types.js';
 import { type BreakdownOptions } from '../utils.js';
 import {
   analyzeExtractionOpportunities,
@@ -49,7 +49,7 @@ export const EXTRACTION_SCHEMA_PROPERTIES = {
   },
 } as const;
 
-type ExtractionSchemaOptions = Omit<MaxCognitiveOptions, 'max'>;
+type ExtractionSchemaOptions = Pick<ComplexityOptions, keyof typeof EXTRACTION_SCHEMA_PROPERTIES>;
 
 export interface ParsedExtractionOptions {
   enableExtraction: boolean;
