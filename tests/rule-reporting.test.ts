@@ -117,6 +117,60 @@ describe('complexity rule reporting for class members', () => {
 });
 
 describe('complexity rule cognitive regressions', () => {
+  it('does not report a branch-free Jest suite even with a cognitive limit of zero (#165)', () => {
+    const tests = Array.from(
+      'abcdefghijklmnopqrstuvwxyz',
+      (letter) => `it('${letter}', () => {});`
+    );
+    const code = `describe('isALetter', () => {\n${tests.join('\n')}\n});`;
+    expect(lint(code, { cognitive: 0, minLines: 0 })).toEqual([]);
+    const { functions } = analyzeFileComplexity(code, 'test.ts');
+    expect(functions).toHaveLength(27);
+    for (const fn of functions) {
+      expect(fn.cognitive).toBe(0);
+      expect(fn.cognitivePoints).toEqual([]);
+      expect(fn.cyclomatic).toBe(1);
+    }
+  });
+
+  it('reports callback complexity separately from its enclosing function (#165)', () => {
+    const code = `export function outer(xs: number[], a: boolean) {
+  if (a) {
+    xs.forEach((x) => {
+      if (x > 1) {
+        if (x > 2) {
+          console.log(x);
+        }
+      }
+    });
+  }
+}`;
+    const messages = lint(code, {
+      cognitive: 0,
+      cyclomatic: 100,
+      minLines: 0,
+      enableExtraction: false,
+    });
+    expect(messages).toEqual([
+      expect.stringContaining("Function '<arrow>' has Cognitive Complexity of 7."),
+      expect.stringContaining("Function 'outer' has Cognitive Complexity of 1."),
+    ]);
+    expect(messages[0]).toContain("Line 4: +3 for 'if' (incl. +2 nesting)");
+    expect(messages[0]).toContain("Line 5: +4 for 'if' (incl. +3 nesting)");
+    expect(messages.join('\n')).not.toContain('nested function');
+    expect(messages.join('\n')).not.toContain('nested arrow function');
+    expect(
+      analyzeFileComplexity(code, 'test.ts').functions.map(({ name, cognitive, cyclomatic }) => ({
+        name,
+        cognitive,
+        cyclomatic,
+      }))
+    ).toEqual([
+      { name: 'anonymous_1', cognitive: 7, cyclomatic: 3 },
+      { name: 'outer', cognitive: 1, cyclomatic: 2 },
+    ]);
+  });
+
   it.each([
     {
       name: 'nested ternary in the consequent',

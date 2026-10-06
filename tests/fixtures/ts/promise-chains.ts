@@ -1,4 +1,4 @@
-// @complexity simplePromise:cyclomatic=1,cognitive=0 promiseWithThen:cyclomatic=1,cognitive=1 promiseWithCatch:cyclomatic=1,cognitive=1 fullChain:cyclomatic=1,cognitive=3 chainWithCondition:cyclomatic=1,cognitive=2
+// @complexity simplePromise:cyclomatic=1,cognitive=0 promiseWithThen:cyclomatic=1,cognitive=0 promiseWithCatch:cyclomatic=1,cognitive=0 fullChain:cyclomatic=1,cognitive=0 chainWithCondition:cyclomatic=1,cognitive=0
 
 // Simple promise return - no complexity
 function simplePromise(): Promise<number> {
@@ -6,19 +6,19 @@ function simplePromise(): Promise<number> {
 }
 
 // Promise with .then() callback
-// Nested arrow function adds +1 to parent scope
+// Declaring the callback adds no points to the parent scope.
 function promiseWithThen(): Promise<number> {
   return Promise.resolve(1).then((x) => x * 2);
 }
 
 // Promise with .catch() callback
-// Nested arrow function adds +1 to parent scope
+// Declaring the callback adds no points to the parent scope.
 function promiseWithCatch(): Promise<number> {
   return Promise.resolve(1).catch((err) => 0);
 }
 
 // Full promise chain: .then().catch().finally()
-// 3 nested arrow functions = +3 to parent scope
+// All callbacks score 0 and add no points to the parent scope.
 function fullChain(): Promise<string> {
   return fetch('/api')
     .then((response) => response.json())
@@ -27,9 +27,8 @@ function fullChain(): Promise<string> {
 }
 
 // Promise chain with condition in callback
-// +1 for nested then callback, +1 for nested catch callback
-// +1 for if inside then (but that's in callback scope)
-// Testing shows cognitive=3 for parent function
+// The if scores +2 inside the then callback (inherited nesting=1).
+// Both callbacks are reported separately; the parent scores 0.
 function chainWithCondition(): Promise<string | null> {
   return fetch('/api')
     .then((response) => {

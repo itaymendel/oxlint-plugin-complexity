@@ -22,14 +22,12 @@ function createCognitiveVisitorCore<TResult extends ComplexityResult>(
   const { context: visitorCtx, baseVisitor } = createComplexityVisitor<CognitiveFunctionScope>({
     createScope: createCognitiveScope,
 
-    onEnterFunction(parentScope, node) {
-      if (!isFunctionNode(node)) return;
+    onEnterFunction(parentScope, node, scope) {
+      cognitive.onEnterFunction(parentScope, scope);
 
-      if (visitorCtx.getFunctionDepth() === 0) {
+      if (isFunctionNode(node) && visitorCtx.getFunctionDepth() === 0) {
         options.onEnterTopLevelFunction?.(node);
       }
-
-      cognitive.onEnterFunction(parentScope, node);
     },
 
     onExitFunction(scope, node) {
@@ -65,7 +63,9 @@ function createCognitiveVisitorCore<TResult extends ComplexityResult>(
  * - else-if, else, labeled break/continue, logical operators (per sequence)
  *
  * ADDITIONAL FEATURES:
- * - Nested function penalty: +1 for each level of function nesting
+ * - Functions, class field initializers, and static blocks are reported independently
+ * - Nested units start at the enclosing scope's current nesting +1; top-level units at 0
+ * - Declaring a nested function adds no complexity to its enclosing scope
  * - Recursion detection: +1 for direct recursive calls
  *
  * EXCLUDED PATTERNS:

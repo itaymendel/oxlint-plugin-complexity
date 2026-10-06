@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-// @complexity useFetchData:cyclomatic=3,cognitive=2 filterItems:cyclomatic=2,cognitive=2
+// @complexity useFetchData:cyclomatic=3,cognitive=2 filterItems:cyclomatic=2,cognitive=1
 import { ref, computed, onMounted } from 'vue';
 
 interface Item {

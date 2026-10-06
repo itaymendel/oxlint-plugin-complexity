@@ -7,7 +7,7 @@
 </template>
 
 <script lang="ts">
-// @complexity filterUsers:cyclomatic=7,cognitive=11
+// @complexity filterUsers:cyclomatic=7,cognitive=16
 import { defineComponent, computed, ref } from 'vue';
 
 interface User {
@@ -31,6 +31,7 @@ export default defineComponent({
   setup(props) {
     const searchQuery = ref('');
 
+    // Nested in setup: each of the five structural points inherits one extra nesting level.
     function filterUsers(users: User[]): User[] {
       const result: User[] = [];
 

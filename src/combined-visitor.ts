@@ -52,8 +52,8 @@ export function createCombinedComplexityVisitor(
         cognitivePoints: [],
       }),
 
-      onEnterFunction(parentScope, node) {
-        cognitive.onEnterFunction(parentScope, node);
+      onEnterFunction(parentScope, _node, scope) {
+        cognitive.onEnterFunction(parentScope, scope);
       },
 
       onExitFunction(scope, node) {

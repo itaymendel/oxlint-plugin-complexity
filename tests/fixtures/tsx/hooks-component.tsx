@@ -1,4 +1,4 @@
-// @complexity useFetch:cyclomatic=1,cognitive=1 DataDisplay:cyclomatic=4
+// @complexity useFetch:cyclomatic=1,cognitive=0 DataDisplay:cyclomatic=4
 import { useState, useEffect } from 'react';
 
 interface FetchState<T> {

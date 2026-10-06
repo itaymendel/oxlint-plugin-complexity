@@ -109,7 +109,8 @@ Counts decision points in code. [Learn more](https://en.wikipedia.org/wiki/Cyclo
 
 Measures how difficult code is to understand by penalizing nesting. [Learn more](https://www.sonarsource.com/resources/cognitive-complexity/)
 
-- **+1 for:** `if`/`for`/`while`/`switch`/`catch`/`? :` (+nesting), `else`, logical sequence changes, nested functions, recursion
+- **+1 for:** `if`/`for`/`while`/`switch`/`catch`/`? :` (+nesting), `else`, logical sequence changes, recursion
+- **Nested scopes:** Functions, class field initializers, and `static {}` blocks are scored independently (top-level start at nesting 0; nested units start at the enclosing scope nesting +1. nested function adds no points to the enclosing scope).
 - **Excluded:** React components (PascalCase + returns JSX), default value patterns (`a || []`)
 
 ### Refactoring Tips
