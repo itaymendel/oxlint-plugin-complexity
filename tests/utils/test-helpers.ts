@@ -119,9 +119,9 @@ export function parseAndPrepareAst(
 }
 
 /**
- * Generic complexity calculator that works with any visitor factory.
+ * Exercise the separate public visitor factories for compatibility checks.
  */
-function calculateComplexityWithVisitor(
+function calculateStandaloneComplexityWithVisitor(
   code: string,
   filename: string,
   type: 'cyclomatic' | 'cognitive'
@@ -156,23 +156,37 @@ function calculateComplexityWithVisitor(
 }
 
 /**
- * Calculate cyclomatic complexity for all functions in the given code
+ * Calculate cyclomatic complexity through the visitor used by the lint rule.
  */
 export function calculateCyclomaticComplexity(
   code: string,
   filename = 'test.ts'
 ): Map<string, ComplexityFunctionResult> {
-  return calculateComplexityWithVisitor(code, filename, 'cyclomatic');
+  return calculateCombinedComplexity(code, filename).cyclomatic;
 }
 
 /**
- * Calculate cognitive complexity for all functions in the given code
+ * Calculate cognitive complexity through the visitor used by the lint rule.
  */
 export function calculateCognitiveComplexity(
   code: string,
   filename = 'test.ts'
 ): Map<string, ComplexityFunctionResult> {
-  return calculateComplexityWithVisitor(code, filename, 'cognitive');
+  return calculateCombinedComplexity(code, filename).cognitive;
+}
+
+export function calculateStandaloneCyclomaticComplexity(
+  code: string,
+  filename = 'test.ts'
+): Map<string, ComplexityFunctionResult> {
+  return calculateStandaloneComplexityWithVisitor(code, filename, 'cyclomatic');
+}
+
+export function calculateStandaloneCognitiveComplexity(
+  code: string,
+  filename = 'test.ts'
+): Map<string, ComplexityFunctionResult> {
+  return calculateStandaloneComplexityWithVisitor(code, filename, 'cognitive');
 }
 
 /**
@@ -185,10 +199,7 @@ export function calculateComplexity(
   cyclomatic: Map<string, ComplexityFunctionResult>;
   cognitive: Map<string, ComplexityFunctionResult>;
 } {
-  return {
-    cyclomatic: calculateCyclomaticComplexity(code, filename),
-    cognitive: calculateCognitiveComplexity(code, filename),
-  };
+  return calculateCombinedComplexity(code, filename);
 }
 
 /**

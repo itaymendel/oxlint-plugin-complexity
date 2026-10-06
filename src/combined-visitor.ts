@@ -1,17 +1,11 @@
 import type {
   Visitor,
   ESTreeNode,
-  FunctionScope,
   ComplexityPoint,
   LogicalExpressionNode,
   SwitchCaseNode,
-  SwitchStatementNode,
-  IfStatementNode,
-  CatchClauseNode,
   AssignmentExpressionNode,
-  LabeledJumpStatementNode,
   CallExpressionNode,
-  ConditionalExpressionNode,
   MemberExpressionNode,
   Context,
 } from './types.js';
@@ -21,17 +15,15 @@ import {
   LOGICAL_OPERATORS,
   LOGICAL_ASSIGNMENT_OPERATORS,
   createComplexityPoint,
-  DEFAULT_COMPLEXITY_INCREMENT,
   includes,
-  isFunctionNode,
 } from './utils.js';
-import { isElseIf, isDefaultValuePattern, isJsxShortCircuit } from './cognitive/patterns.js';
-import { isRecursiveCall } from './cognitive/recursion.js';
+import {
+  createCognitiveHandlers,
+  createCognitiveScope,
+  type CognitiveFunctionScope,
+} from './cognitive/handlers.js';
 
-interface CombinedComplexityScope extends FunctionScope {
-  nestingLevel: number;
-  nestingNodes: Set<ESTreeNode>;
-  hasRecursiveCall: boolean;
+interface CombinedComplexityScope extends CognitiveFunctionScope {
   cyclomaticPoints: ComplexityPoint[];
   cognitivePoints: ComplexityPoint[];
 }
@@ -55,37 +47,30 @@ export function createCombinedComplexityVisitor(
   const { context: visitorContext, baseVisitor } = createComplexityVisitor<CombinedComplexityScope>(
     {
       createScope: (node, name) => ({
-        node,
-        name,
-        points: [],
+        ...createCognitiveScope(node, name),
         cyclomaticPoints: [],
         cognitivePoints: [],
-        nestingLevel: 0,
-        nestingNodes: new Set(),
-        hasRecursiveCall: false,
       }),
 
-      onEnterFunction(parentScope, node, _scope) {
-        // Only add nested function penalty for functions directly inside other functions
-        // The penalty is added to the PARENT scope, not the nested function's own scope
-        if (parentScope && isFunctionNode(node) && isFunctionNode(parentScope.node)) {
-          const functionType =
-            node.type === 'ArrowFunctionExpression' ? 'arrow function' : 'function';
-          parentScope.cognitivePoints.push(createComplexityPoint(node, `nested ${functionType}`));
-        }
+      onEnterFunction(parentScope, node) {
+        cognitive.onEnterFunction(parentScope, node);
       },
 
       onExitFunction(scope, node) {
+        cognitive.onExitFunction(scope, node);
         const cyclomatic = scope.cyclomaticPoints.reduce(
           (sum, point) => sum + point.complexity,
           BASE_FUNCTION_COMPLEXITY
         );
-        const cognitive = scope.cognitivePoints.reduce((sum, point) => sum + point.complexity, 0);
+        const cognitiveTotal = scope.cognitivePoints.reduce(
+          (sum, point) => sum + point.complexity,
+          0
+        );
 
         onComplexityCalculated(
           {
             cyclomatic,
-            cognitive,
+            cognitive: cognitiveTotal,
             cyclomaticPoints: scope.cyclomaticPoints,
             cognitivePoints: scope.cognitivePoints,
           },
@@ -99,197 +84,73 @@ export function createCombinedComplexityVisitor(
   );
 
   const { getScopeFor } = visitorContext;
+  const cognitive = createCognitiveHandlers(context, {
+    getScopeFor,
+    getPoints: (scope) => scope.cognitivePoints,
+    pointFormat: 'combined',
+  });
 
-  function addCyclomatic(node: ESTreeNode, message: string, amount: number = 1): void {
+  function addCyclomatic(node: ESTreeNode, message: string): void {
     const scope = getScopeFor(node);
     if (scope) {
-      scope.cyclomaticPoints.push(createComplexityPoint(node, message, amount));
+      scope.cyclomaticPoints.push(createComplexityPoint(node, message));
     }
   }
 
-  function addCognitive(node: ESTreeNode, message: string): void {
-    const scope = getScopeFor(node);
-    if (scope) {
-      scope.cognitivePoints.push(createComplexityPoint(node, message));
-    }
+  // Both metrics must receive overlapping events; spreading handlers alone would overwrite one.
+  function withCyclomatic<T extends ESTreeNode>(handler: (node: T) => void, message: string) {
+    return (node: T): void => {
+      addCyclomatic(node, message);
+      handler(node);
+    };
   }
-
-  function addStructuralCognitive(node: ESTreeNode, message: string): void {
-    const scope = getScopeFor(node);
-    if (scope) {
-      scope.cognitivePoints.push(
-        createComplexityPoint(node, message, DEFAULT_COMPLEXITY_INCREMENT, scope.nestingLevel)
-      );
-    }
-  }
-
-  function addNestingNode(node: ESTreeNode): void {
-    // A function branch/body opens its own scope, which tracks its own nesting;
-    // the enclosing scope must never hold a marker for it.
-    if (isFunctionNode(node)) return;
-    const scope = getScopeFor(node);
-    if (scope) {
-      scope.nestingNodes.add(node);
-    }
-  }
-
-  function handleNestingEnter(node: ESTreeNode): void {
-    const scope = getScopeFor(node);
-    if (!scope?.nestingNodes.has(node)) return;
-    scope.nestingLevel++;
-  }
-
-  function handleNestingExit(node: ESTreeNode): void {
-    const scope = getScopeFor(node);
-    if (!scope?.nestingNodes.has(node)) return;
-    scope.nestingLevel--;
-    scope.nestingNodes.delete(node);
-  }
-
-  function handleIfStatement(node: IfStatementNode): void {
-    addCyclomatic(node, 'if');
-
-    if (isElseIf(node)) {
-      addCognitive(node, 'else if');
-    } else {
-      addStructuralCognitive(node, 'if');
-    }
-    addNestingNode(node.consequent);
-
-    if (node.alternate && node.alternate.type !== 'IfStatement') {
-      addNestingNode(node.alternate);
-      addCognitive(node, 'else');
-    }
-  }
-
-  function handleLogicalExpression(node: LogicalExpressionNode): void {
-    if (!getScopeFor(node)) return;
-
-    const operator = node.operator;
-    if (!includes(LOGICAL_OPERATORS, operator)) return;
-
-    // Cyclomatic: always count logical operators
-    addCyclomatic(node, operator);
-
-    // Cognitive: skip default value patterns and JSX short-circuit
-    if (isDefaultValuePattern(node, context) || isJsxShortCircuit(node)) {
-      return;
-    }
-
-    // Cognitive: only count if NOT a continuation of the same operator
-    // (e.g., a && b && c counts as +1, not +3)
-    const parent = node.parent as LogicalExpressionNode | undefined;
-    const isContinuationOfSameOperator =
-      parent?.type === 'LogicalExpression' && parent.operator === operator;
-
-    if (!isContinuationOfSameOperator) {
-      addCognitive(node, `logical operator '${operator}'`);
-    }
-  }
-
-  function handleLabeledJump(node: ESTreeNode, keyword: string): void {
-    const stmt = node as LabeledJumpStatementNode;
-    if (stmt.label) {
-      addCognitive(node, `${keyword} to label '${stmt.label.name}'`);
-    }
-  }
-
-  // Nesting nodes are always children, so the '*:exit' handler alone unwinds them.
-  const createLoopHandler = (label: string) => (node: ESTreeNode) => {
-    addCyclomatic(node, label);
-    addStructuralCognitive(node, label);
-    addNestingNode((node as { body: ESTreeNode }).body);
-  };
 
   return {
     ...baseVisitor,
+    ...cognitive.visitor,
 
-    // Wildcard handlers to track nesting level for all nodes
-    '*'(node: ESTreeNode) {
-      handleNestingEnter(node);
-    },
-    '*:exit'(node: ESTreeNode) {
-      handleNestingExit(node);
-    },
+    IfStatement: withCyclomatic(cognitive.visitor.IfStatement, 'if'),
+    ForStatement: withCyclomatic(cognitive.visitor.ForStatement, 'for'),
+    ForInStatement: withCyclomatic(cognitive.visitor.ForInStatement, 'for-in'),
+    ForOfStatement: withCyclomatic(cognitive.visitor.ForOfStatement, 'for-of'),
+    WhileStatement: withCyclomatic(cognitive.visitor.WhileStatement, 'while'),
+    DoWhileStatement: withCyclomatic(cognitive.visitor.DoWhileStatement, 'do-while'),
+    CatchClause: withCyclomatic(cognitive.visitor.CatchClause, 'catch'),
+    ConditionalExpression: withCyclomatic(cognitive.visitor.ConditionalExpression, 'ternary'),
 
-    IfStatement(node: ESTreeNode) {
-      handleIfStatement(node as IfStatementNode);
-    },
-
-    ForStatement: createLoopHandler('for'),
-    ForInStatement: createLoopHandler('for-in'),
-    ForOfStatement: createLoopHandler('for-of'),
-    WhileStatement: createLoopHandler('while'),
-    DoWhileStatement: createLoopHandler('do-while'),
-
-    SwitchCase(node: ESTreeNode) {
-      const switchCase = node as SwitchCaseNode;
-      if (switchCase.test !== null) {
+    SwitchCase(node: SwitchCaseNode) {
+      if (node.test !== null) {
         addCyclomatic(node, 'case');
       }
     },
-    SwitchStatement(node: ESTreeNode) {
-      addStructuralCognitive(node, 'switch');
-      for (const switchCase of (node as SwitchStatementNode).cases) {
-        addNestingNode(switchCase as ESTreeNode);
+
+    LogicalExpression(node: LogicalExpressionNode) {
+      if (includes(LOGICAL_OPERATORS, node.operator)) {
+        addCyclomatic(node, node.operator);
       }
+      cognitive.visitor.LogicalExpression(node);
     },
 
-    CatchClause(node: ESTreeNode) {
-      addCyclomatic(node, 'catch');
-      addStructuralCognitive(node, 'catch');
-      addNestingNode((node as CatchClauseNode).body);
-    },
-
-    ConditionalExpression(node: ESTreeNode) {
-      const ternary = node as ConditionalExpressionNode;
-      addCyclomatic(node, 'ternary');
-      addStructuralCognitive(node, 'ternary operator');
-      // Add nesting for both branches to properly track nested ternaries
-      addNestingNode(ternary.consequent as ESTreeNode);
-      addNestingNode(ternary.alternate as ESTreeNode);
-    },
-
-    LogicalExpression(node: ESTreeNode) {
-      handleLogicalExpression(node as LogicalExpressionNode);
-    },
-
-    AssignmentExpression(node: ESTreeNode) {
-      const assignment = node as AssignmentExpressionNode;
-      if (includes(LOGICAL_ASSIGNMENT_OPERATORS, assignment.operator)) {
-        addCyclomatic(node, assignment.operator);
+    AssignmentExpression(node: AssignmentExpressionNode) {
+      if (includes(LOGICAL_ASSIGNMENT_OPERATORS, node.operator)) {
+        addCyclomatic(node, node.operator);
       }
     },
     AssignmentPattern(node: ESTreeNode) {
       addCyclomatic(node, 'default value');
     },
 
-    MemberExpression(node: ESTreeNode) {
-      if ((node as MemberExpressionNode).optional) {
+    MemberExpression(node: MemberExpressionNode) {
+      if (node.optional) {
         addCyclomatic(node, '?.');
       }
     },
 
-    BreakStatement(node: ESTreeNode) {
-      handleLabeledJump(node, 'break');
-    },
-    ContinueStatement(node: ESTreeNode) {
-      handleLabeledJump(node, 'continue');
-    },
-
-    CallExpression(node: ESTreeNode) {
-      const call = node as CallExpressionNode;
-      if (call.optional) {
+    CallExpression(node: CallExpressionNode) {
+      if (node.optional) {
         addCyclomatic(node, '?.()');
       }
-
-      const scope = getScopeFor(node);
-      if (!scope?.name || !isFunctionNode(scope.node)) return;
-
-      if (!scope.hasRecursiveCall && isRecursiveCall(call, scope.name)) {
-        scope.hasRecursiveCall = true;
-        addCognitive(node, 'recursive call');
-      }
+      cognitive.visitor.CallExpression(node);
     },
   } as Visitor;
 }
