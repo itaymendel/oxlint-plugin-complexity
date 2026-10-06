@@ -7,22 +7,12 @@ export type {
   Rule,
   Context,
   Visitor,
-  FunctionScope,
   ComplexityPoint,
   ComplexityResult,
-  MaxCyclomaticOptions,
-  MaxCognitiveOptions,
+  ComplexityOptions,
 } from './types.js';
 
-// Re-export visitor factory for advanced usage
-export { createComplexityVisitor } from './visitor.js';
-export type { VisitorContext } from './visitor.js';
-
-// Re-export calculators for programmatic use
-export { createCyclomaticVisitor } from './cyclomatic.js';
-export { createCognitiveVisitor } from './cognitive/visitor.js';
-
-// Re-export combined visitor for advanced usage
+// Supported AST API for calculating both metrics in one traversal
 export { createCombinedComplexityVisitor } from './combined-visitor.js';
 export type { CombinedComplexityResult } from './combined-visitor.js';
 

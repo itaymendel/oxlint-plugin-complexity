@@ -1,9 +1,9 @@
-import { defineRule } from '@oxlint/plugins';
+import { defineRule, type RuleOptionsSchema } from '@oxlint/plugins';
 import type {
   Rule,
   Context,
   FunctionNode,
-  MaxCognitiveOptions,
+  ComplexityOptions,
   VisitorWithHooks,
   ESTreeNode,
 } from '../types.js';
@@ -23,11 +23,7 @@ const DEFAULT_CYCLOMATIC = 20;
 const DEFAULT_COGNITIVE = 15;
 const DEFAULT_MIN_LINES = 10;
 
-interface CombinedComplexityOptions extends Omit<MaxCognitiveOptions, 'max'> {
-  cyclomatic?: number;
-  cognitive?: number;
-  minLines?: number;
-}
+type OptionSchema = Extract<RuleOptionsSchema, unknown[]>[number];
 
 /**
  * Enforce maximum cyclomatic and cognitive complexity (RECOMMENDED).
@@ -68,7 +64,7 @@ export const complexity: Rule = defineRule({
             description: 'Minimum lines to analyze (default: 10, 0 = analyze all)',
           },
           ...EXTRACTION_SCHEMA_PROPERTIES,
-        },
+        } satisfies Record<keyof ComplexityOptions, OptionSchema>,
         additionalProperties: false,
       },
     ],
@@ -138,7 +134,7 @@ export const complexity: Rule = defineRule({
 
     return {
       before() {
-        const options = (context.options[0] ?? {}) as CombinedComplexityOptions;
+        const options = (context.options[0] ?? {}) as ComplexityOptions;
         maxCyclomatic = options.cyclomatic ?? DEFAULT_CYCLOMATIC;
         maxCognitive = options.cognitive ?? DEFAULT_COGNITIVE;
         minLines = options.minLines ?? DEFAULT_MIN_LINES;
