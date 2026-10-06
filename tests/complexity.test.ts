@@ -6,6 +6,8 @@ import {
   calculateCyclomaticComplexity,
   calculateCognitiveComplexity,
   calculateCombinedComplexity,
+  calculateStandaloneCyclomaticComplexity,
+  calculateStandaloneCognitiveComplexity,
   type ComplexityFunctionResult,
 } from './utils/test-helpers';
 
@@ -66,7 +68,7 @@ describe('Combined Visitor (complexity/complexity rule)', () => {
     const parseFilename = getParseFilename(fixture);
 
     it('should match standalone cyclomatic results', () => {
-      const standalone = calculateCyclomaticComplexity(fixture.code, parseFilename);
+      const standalone = calculateStandaloneCyclomaticComplexity(fixture.code, parseFilename);
       const combined = calculateCombinedComplexity(fixture.code, parseFilename);
 
       // Check all functions exist in both results
@@ -82,7 +84,7 @@ describe('Combined Visitor (complexity/complexity rule)', () => {
     });
 
     it('should match standalone cognitive results', () => {
-      const standalone = calculateCognitiveComplexity(fixture.code, parseFilename);
+      const standalone = calculateStandaloneCognitiveComplexity(fixture.code, parseFilename);
       const combined = calculateCombinedComplexity(fixture.code, parseFilename);
 
       // Check all functions exist in both results

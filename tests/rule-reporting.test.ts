@@ -116,6 +116,61 @@ describe('complexity rule reporting for class members', () => {
   });
 });
 
+describe('complexity rule cognitive regressions', () => {
+  it.each([
+    {
+      name: 'nested ternary in the consequent',
+      body: 'return a ? (b ? 1 : 2) : 3;',
+      score: 3,
+    },
+    {
+      name: 'nested ternary in the alternate',
+      body: 'return a ? 1 : (b ? 2 : 3);',
+      score: 3,
+    },
+    {
+      name: 'nested ternaries in both branches',
+      body: 'return a ? (b ? 1 : 2) : (b ? 3 : 4);',
+      score: 5,
+    },
+    {
+      name: 'nesting unwinds before the next statement',
+      body: 'const n = a ? (b ? 1 : 2) : 3; if (a) return n;',
+      score: 4,
+    },
+  ])('$name', ({ body, score }) => {
+    const messages = lint(`function example(a, b) { ${body} }`, {
+      cognitive: 0,
+      cyclomatic: 100,
+      minLines: 0,
+      enableExtraction: false,
+    });
+    expect(messages).toEqual([
+      expect.stringContaining(`Function 'example' has Cognitive Complexity of ${score}.`),
+    ]);
+  });
+
+  it('reports recursion once at the first call before later decisions', () => {
+    const code = `function recurse(n) {
+  recurse(n - 1);
+  recurse(n - 2);
+  if (n) return n;
+}`;
+    const messages = lint(code, {
+      cognitive: 0,
+      cyclomatic: 100,
+      minLines: 0,
+      enableExtraction: false,
+    });
+    expect(messages).toEqual([
+      expect.stringContaining("Function 'recurse' has Cognitive Complexity of 2."),
+    ]);
+    expect(messages[0]).toContain("Line 2: +1 for 'recursive call'");
+    expect(messages[0]).not.toContain('Line 3:');
+    expect(messages[0]).toContain("Line 4: +1 for 'if'");
+  });
+});
+
 describe('standalone API point locations', () => {
   it('records the else point on a line, not at the default location', () => {
     const code = `
