@@ -179,7 +179,7 @@ const DEFAULT_ELSE_IF_CHAIN_THRESHOLD = 4;
 const DEFAULT_LOGICAL_OPERATOR_THRESHOLD = 3;
 
 const NESTING_TIP =
-  '    ↳ Tip: Extract inner loops into helper functions - each extraction removes one nesting level';
+  '    ↳ Tip: Move this whole statement (not just its body) into a helper function defined outside this function - its nesting stops counting here';
 
 export interface BreakdownOptions {
   /** Minimum nesting level to show extraction tip (default: 3, set to 0 to disable) */
@@ -226,7 +226,7 @@ function generatePatternTips(counts: PatternCounts, options: BreakdownOptions): 
 
   if (logicalThreshold > 0 && counts.logicalOperatorCount >= logicalThreshold) {
     tips.push(
-      `Complex boolean logic (${counts.logicalOperatorCount} operator sequences). Consider extracting into named boolean variables.`
+      `Complex boolean logic (${counts.logicalOperatorCount} operator sequences). Consider moving these conditions into well-named helper functions; named boolean variables in this function improve readability but don't lower its score.`
     );
   }
 
