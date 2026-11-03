@@ -113,7 +113,9 @@ Measures how difficult code is to understand by penalizing nesting. [Learn more]
 
 - **+1 for:** `if`/`for`/`while`/`switch`/`catch`/`? :` (+nesting), `else`, logical sequence changes, recursion
 - **Nested scopes:** Functions, class field initializers, and `static {}` blocks are scored independently (top-level start at nesting 0; nested units start at the enclosing scope nesting +1. nested function adds no points to the enclosing scope).
-- **Excluded:** React components (PascalCase + returns JSX), default value patterns (`a || []`)
+- **Excluded:**
+  - React components gated by logical ANDs (`show && <Component />`)
+  - Default value patterns (`s || ""`, `n ?? 2.5`, `arr ?? []`, `opts || {}`)
 
 ### Refactoring Tips
 
