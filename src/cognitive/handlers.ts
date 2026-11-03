@@ -1,5 +1,4 @@
 import type {
-  Context,
   Visitor,
   ESTreeNode,
   LogicalExpressionNode,
@@ -12,7 +11,7 @@ import type {
   ComplexityPoint,
   FunctionScope,
 } from '../types.js';
-import { isElseIf, isDefaultValuePattern, isJsxShortCircuit } from './patterns.js';
+import { isElseIf, isDefaultValuePattern, isJsxShortCircuit, skipParensUp } from './patterns.js';
 import { isRecursiveCall } from './recursion.js';
 import { createComplexityPoint, DEFAULT_COMPLEXITY_INCREMENT, isFunctionNode } from '../utils.js';
 
@@ -49,7 +48,6 @@ interface VisitorContext {
   addComplexity: (node: ESTreeNode, message: string) => void;
   addStructuralComplexity: (node: ESTreeNode, message: string) => void;
   addNestingNode: (node: ESTreeNode) => void;
-  ruleContext: Context;
   format: (typeof POINT_FORMATS)[keyof typeof POINT_FORMATS];
 }
 
@@ -97,9 +95,9 @@ function handleIfStatement(node: IfStatementNode, ctx: VisitorContext): void {
 
 function handleLogicalExpression(node: LogicalExpressionNode, ctx: VisitorContext): void {
   if (!ctx.getScopeFor(node)) return;
-  if (isJsxShortCircuit(node) || isDefaultValuePattern(node, ctx.ruleContext)) return;
+  if (isJsxShortCircuit(node) || isDefaultValuePattern(node)) return;
 
-  const parent = node.parent as LogicalExpressionNode | undefined;
+  const parent = skipParensUp(node) as LogicalExpressionNode | undefined;
   const isContinuationOfSameOperator =
     parent?.type === 'LogicalExpression' && parent.operator === node.operator;
 
@@ -173,10 +171,11 @@ function buildVisitorHandlers(ctx: VisitorContext) {
 }
 
 /** Cognitive scoring and lifecycle hooks, using the caller's existing scope stack. */
-export function createCognitiveHandlers<T extends CognitiveFunctionScope>(
-  context: Context,
-  { getScopeFor, getPoints, pointFormat }: CognitiveHandlerOptions<T>
-) {
+export function createCognitiveHandlers<T extends CognitiveFunctionScope>({
+  getScopeFor,
+  getPoints,
+  pointFormat,
+}: CognitiveHandlerOptions<T>) {
   const format = POINT_FORMATS[pointFormat];
 
   function addComplexity(node: ESTreeNode, message: string): void {
@@ -207,7 +206,6 @@ export function createCognitiveHandlers<T extends CognitiveFunctionScope>(
       addComplexity,
       addStructuralComplexity,
       addNestingNode,
-      ruleContext: context,
       format,
     }),
 

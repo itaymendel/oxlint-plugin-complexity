@@ -1,4 +1,4 @@
-// @complexity o:cyclomatic=2,cognitive=0 r:cyclomatic=2,cognitive=1 p:cyclomatic=2,cognitive=1 ps:cyclomatic=3,cognitive=0 opt:cyclomatic=2,cognitive=0 n:cyclomatic=2,cognitive=0 cast:cyclomatic=2,cognitive=1 asCast:cyclomatic=2,cognitive=1 satisfiesCast:cyclomatic=2,cognitive=1 constructor:cyclomatic=4,cognitive=1 anonymous_11:cyclomatic=2,cognitive=1
+// @complexity o:cyclomatic=2,cognitive=0 r:cyclomatic=2,cognitive=1 p:cyclomatic=2,cognitive=1 ps:cyclomatic=3,cognitive=0 opt:cyclomatic=2,cognitive=0 n:cyclomatic=2,cognitive=0 cast:cyclomatic=2,cognitive=1 asCast:cyclomatic=2,cognitive=1 satisfiesCast:cyclomatic=2,cognitive=1 constructor:cyclomatic=4,cognitive=0 anonymous_11:cyclomatic=2,cognitive=1
 declare const flag: boolean;
 declare const a: { b?: { c?: number } };
 declare function init(): number | undefined;

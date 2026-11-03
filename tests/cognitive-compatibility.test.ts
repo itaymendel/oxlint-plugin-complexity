@@ -19,7 +19,7 @@ function calculate(code: string, mode: 'standalone' | 'combined'): Map<string, C
   const context = createMockContext();
   const visitor =
     mode === 'standalone'
-      ? createCognitiveVisitor(context, (result, node) => {
+      ? createCognitiveVisitor((result, node) => {
           results.set(getDisplayFunctionName(node, index++), result);
         })
       : createCombinedComplexityVisitor(context, (result, node) => {

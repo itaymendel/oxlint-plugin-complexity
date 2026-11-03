@@ -84,7 +84,7 @@ export function createCombinedComplexityVisitor(
   );
 
   const { getScopeFor } = visitorContext;
-  const cognitive = createCognitiveHandlers(context, {
+  const cognitive = createCognitiveHandlers({
     getScopeFor,
     getPoints: (scope) => scope.cognitivePoints,
     pointFormat: 'combined',
