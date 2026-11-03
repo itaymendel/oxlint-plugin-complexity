@@ -53,8 +53,8 @@ describe('formatBreakdown', () => {
     it('shows nesting tip when top offender has nesting >= 3', () => {
       const [, result] = [...results.entries()][0];
       const breakdown = formatBreakdown(result.points);
-      expect(breakdown).toContain('↳ Tip: Extract inner loops');
-      expect(breakdown).toContain('each extraction removes one nesting level');
+      expect(breakdown).toContain('↳ Tip: Move this nested block into a helper function');
+      expect(breakdown).toContain('its nesting stops counting here');
     });
   });
 
@@ -296,7 +296,9 @@ describe('formatBreakdown', () => {
 
       expect(breakdown).toContain('Tips:');
       expect(breakdown).toContain('Complex boolean logic (3 operator sequences)');
-      expect(breakdown).toContain('named boolean variables');
+      expect(breakdown).toContain('helper functions');
+      expect(breakdown).toContain("don't lower its score");
+      expect(breakdown).not.toContain('Consider extracting into named boolean variables');
     });
 
     it('does NOT show tip when logical operator count is below threshold', () => {
@@ -412,5 +414,40 @@ describe('formatBreakdown', () => {
       expect(breakdown).toContain('else-if chain');
       expect(breakdown).toContain('boolean logic');
     });
+  });
+});
+
+describe('boolean-logic tip claim (#176)', () => {
+  const code = `
+export const before = (u, cart, a, b) => {
+  if ((u.isActive && !u.isBlocked) || (cart.count > 0 && cart.total > 0) || (a && b)) { return true; }
+  return false;
+};
+export const after = (u, cart, a, b) => {
+  const isUserOk = u.isActive && !u.isBlocked;
+  const hasItems = cart.count > 0 && cart.total > 0;
+  const hasFlags = a && b;
+  if (isUserOk || hasItems || hasFlags) { return true; }
+  return false;
+};
+function isEligible(u, cart, a, b) {
+  return (u.isActive && !u.isBlocked) || (cart.count > 0 && cart.total > 0) || (a && b);
+}
+export const helperCaller = (u, cart, a, b) => {
+  if (isEligible(u, cart, a, b)) { return true; }
+  return false;
+};
+`;
+  const results = calculateCognitiveComplexity(code, 'test.js');
+  const totalOf = (name: string) => results.get(name)?.total;
+
+  it('named boolean variables do not lower the score', () => {
+    expect(totalOf('before')).toBe(5);
+    expect(totalOf('after')).toBe(5);
+  });
+
+  it('moving the conditions into a helper lowers the caller score; the helper is scored separately', () => {
+    expect(totalOf('helperCaller')).toBe(1);
+    expect(totalOf('isEligible')).toBe(4);
   });
 });

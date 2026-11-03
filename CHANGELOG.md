@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Make refactoring tips accurate: the boolean-logic and nesting tips now recommend extracting helper functions, which actually lower the score (#176).
+
 ## [4.0.0] - 2026-10-11
 
 ### Changed

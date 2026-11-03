@@ -48,7 +48,7 @@ Breakdown:
    Line 4: +3 for 'if' (incl. +2 nesting)
    Line 5: +4 for 'if' (incl. +3 nesting)
 >>> Line 6: +5 for 'if' (incl. +4 nesting) [top offender]
-    ↳ Tip: Extract inner loops into helper functions - each extraction removes one nesting level
+    ↳ Tip: Move this nested block into a helper function defined outside this function - its nesting stops counting here
 ```
 
 ```javascript
@@ -121,9 +121,9 @@ Measures how difficult code is to understand by penalizing nesting. [Learn more]
 
 Detects common complexity patterns and provides actionable tips:
 
-- **Deep nesting** (`nestingTipThreshold`): Suggests extracting inner loops/conditions
-- **Long else-if chains** (`elseIfChainThreshold`): Recommends lookup tables or strategy pattern
-- **Logical operator sequences** (`logicalOperatorThreshold`): Suggests extracting boolean expressions
+- **Deep nesting** (`nestingTipThreshold`): Suggests moving deeply nested blocks into a top-level helper function
+- **Long else-if chains** (`elseIfChainThreshold`): Recommends a lookup object or switch statement
+- **Logical operator sequences** (`logicalOperatorThreshold`): Suggests moving the conditions into well-named helper functions (named boolean variables improve readability but don't lower the score)
 
 ### Extraction Suggestions
 
