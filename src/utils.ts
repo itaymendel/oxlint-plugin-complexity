@@ -179,7 +179,7 @@ const DEFAULT_ELSE_IF_CHAIN_THRESHOLD = 4;
 const DEFAULT_LOGICAL_OPERATOR_THRESHOLD = 3;
 
 const NESTING_TIP =
-  '    ↳ Tip: Move this nested block into a helper function defined outside this function - its nesting stops counting here';
+  '    ↳ Tip: Move this whole statement (not just its body) into a helper function defined outside this function - its nesting stops counting here';
 
 export interface BreakdownOptions {
   /** Minimum nesting level to show extraction tip (default: 3, set to 0 to disable) */

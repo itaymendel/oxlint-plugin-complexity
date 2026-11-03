@@ -53,7 +53,9 @@ describe('formatBreakdown', () => {
     it('shows nesting tip when top offender has nesting >= 3', () => {
       const [, result] = [...results.entries()][0];
       const breakdown = formatBreakdown(result.points);
-      expect(breakdown).toContain('↳ Tip: Move this nested block into a helper function');
+      expect(breakdown).toContain(
+        '↳ Tip: Move this whole statement (not just its body) into a helper function'
+      );
       expect(breakdown).toContain('its nesting stops counting here');
     });
   });
