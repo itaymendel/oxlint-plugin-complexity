@@ -33,7 +33,7 @@ export function isFunctionNode(node: ESTreeNode): boolean {
   return FUNCTION_NODE_TYPES.has(node.type);
 }
 
-function unwrapExpression(node: ESTreeNode): ESTreeNode {
+export function unwrapExpression(node: ESTreeNode): ESTreeNode {
   let current = node;
   while (TRANSPARENT_EXPRESSION_TYPES.has(current.type) && 'expression' in current) {
     current = current.expression as ESTreeNode;

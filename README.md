@@ -115,7 +115,7 @@ Measures how difficult code is to understand by penalizing nesting. [Learn more]
 - **Nested scopes:** Functions, class field initializers, and `static {}` blocks are scored independently (top-level start at nesting 0; nested units start at the enclosing scope nesting +1. nested function adds no points to the enclosing scope).
 - **Excluded:**
   - React components gated by logical ANDs (`show && <Component />`)
-  - Default value patterns (`s || ""`, `n ?? 2.5`, `arr ?? []`, `opts || {}`)
+  - Default value fallbacks, anywhere: a `||`/`??` chain ending in a literal, `[]`/`{}`, `-1`, `undefined`, a plain template string, or a no-op callback like `() => {}`, optionally wrapped in `as`/`satisfies`/`!` (`f(a ?? "")`, `<C x={a ?? []} />`). The whole chain is exempt; `a || b()` still counts.
 
 ### Refactoring Tips
 

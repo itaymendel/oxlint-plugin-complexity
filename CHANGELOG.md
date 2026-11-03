@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Exempt `||`/`??` chains ending in a constant fallback (literals, `[]`, `{}`, `-1`, `undefined`, plain templates, no-op callbacks) from cognitive complexity in any position (#173, #174).
+
 ### Fixed
 
 - Make refactoring tips accurate: the boolean-logic and nesting tips now recommend extracting helper functions, which actually lower the score (#176).
+- Score parenthesized `||`/`??`/`&&` chains in `standalone`/`diff` like the lint rule (#173, #174).
 
 ## [4.0.0] - 2026-10-11
 

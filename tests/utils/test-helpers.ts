@@ -143,11 +143,10 @@ function calculateStandaloneComplexityWithVisitor(
     });
   };
 
-  // Cyclomatic visitor doesn't need context, cognitive still does
   const listener =
     type === 'cyclomatic'
       ? createCyclomaticVisitor(onComplexityCalculated)
-      : createCognitiveVisitor(createMockContext(), onComplexityCalculated);
+      : createCognitiveVisitor(onComplexityCalculated);
 
   // Pass code to walkWithVisitor so it can convert byte offsets to line/column
   walkWithVisitor(program as unknown as ESTreeNode, listener, code);

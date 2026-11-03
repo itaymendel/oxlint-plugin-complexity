@@ -16,7 +16,6 @@ interface CognitiveVisitorOptions<TResult extends ComplexityResult> {
 }
 
 function createCognitiveVisitorCore<TResult extends ComplexityResult>(
-  context: Context,
   options: CognitiveVisitorOptions<TResult>
 ): Visitor {
   const { context: visitorCtx, baseVisitor } = createComplexityVisitor<CognitiveFunctionScope>({
@@ -44,7 +43,7 @@ function createCognitiveVisitorCore<TResult extends ComplexityResult>(
     },
   });
 
-  const cognitive = createCognitiveHandlers(context, {
+  const cognitive = createCognitiveHandlers({
     getScopeFor: visitorCtx.getScopeFor,
     getPoints: (scope) => scope.points,
     pointFormat: 'standalone',
@@ -69,14 +68,14 @@ function createCognitiveVisitorCore<TResult extends ComplexityResult>(
  * - Recursion detection: +1 for direct recursive calls
  *
  * EXCLUDED PATTERNS:
- * - Default value patterns: `const x = a || literal`, `a = a || literal`
+ * - Default value patterns: `||`/`??` chains ending in a constant fallback (literal, `[]`, `{}`,
+ *   `-1`, `undefined`, no-expression template, no-op callback), in any position
  * - JSX short-circuit: `{show && <Component />}`
  */
 export function createCognitiveVisitor(
-  context: Context,
   onComplexityCalculated: (result: ComplexityResult, node: ESTreeNode) => void
 ): Visitor {
-  return createCognitiveVisitorCore(context, { onComplexityCalculated });
+  return createCognitiveVisitorCore({ onComplexityCalculated });
 }
 
 export interface ComplexityResultWithVariables extends ComplexityResult {
@@ -94,7 +93,7 @@ export function createCognitiveVisitorWithTracking(
   context: Context,
   onComplexityCalculated: (result: ComplexityResultWithVariables, node: ESTreeNode) => void
 ): Visitor {
-  return createCognitiveVisitorCore<ComplexityResultWithVariables>(context, {
+  return createCognitiveVisitorCore<ComplexityResultWithVariables>({
     onExitTopLevelFunction(node) {
       const variables = getVariablesForFunction(context, node);
       const funcNode = node as FunctionNode;
