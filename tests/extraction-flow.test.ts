@@ -28,6 +28,8 @@ describe('Smart Extraction Detection', () => {
       earlyReturnResults = calculateCognitiveWithTracking(fixture.code, 'test.js');
     });
 
+    // `hasEarlyReturn` is true for any function-level return in the candidate, even a
+    // replaceable one (tail or always-abrupt); `earlyExits[].replaceable` tells them apart.
     it('detects early returns in guard clause functions', () => {
       const result = earlyReturnResults.get('guardClauses')!;
       expect(result).toBeDefined();
@@ -68,7 +70,7 @@ describe('Smart Extraction Detection', () => {
       expect(flow.hasEarlyReturn).toBe(false);
     });
 
-    it('does not flag a single return on the last line as early return', () => {
+    it('flags a return in a candidate without unit info conservatively', () => {
       const code = `
         function singleReturn(a, b) {
           let result = 0;
@@ -83,16 +85,22 @@ describe('Smart Extraction Detection', () => {
       const result = results.get('singleReturn')!;
       const flow = analyzeFlowFromResult(result);
 
-      expect(flow.hasEarlyReturn).toBe(false);
+      // Hand-built candidates cannot tell a tail return from a guard clause
+      expect(flow.hasEarlyReturn).toBe(true);
+      expect(flow.earlyExits).toEqual([
+        { kind: 'return', line: 7, replaceable: false, hasArgument: true },
+      ]);
     });
 
     it('shows early-return issues in formatted output', () => {
       const code = `
         function processData(items, config) {
-          if (!items) return null;
           let total = 0;
           for (const item of items) {
             if (item.valid) {
+              if (item.value < 0) {
+                return null;
+              }
               total += item.value;
             }
           }
@@ -120,8 +128,7 @@ describe('Smart Extraction Detection', () => {
         result.node,
         result.points,
         result.total,
-        result.variables,
-        'processData'
+        result.variables
       );
 
       expect(suggestions.length).toBe(2);
@@ -185,7 +192,7 @@ describe('Smart Extraction Detection', () => {
       expect(flow.hasThisReference).toBe(false);
     });
 
-    it('does not flag this inside arrow function', () => {
+    it('flags this inside arrow function (arrows do not rebind this)', () => {
       const code = `
         function outer(items) {
           let count = 0;
@@ -206,7 +213,7 @@ describe('Smart Extraction Detection', () => {
       const candidate = buildCandidateForRange(result, 2, -1);
       const flow = analyzeVariableFlow(candidate, result.variables, result.node);
 
-      expect(flow.hasThisReference).toBe(false);
+      expect(flow.hasThisReference).toBe(true);
     });
 
     it('does not flag this inside class members', () => {
@@ -286,7 +293,9 @@ describe('Smart Extraction Detection', () => {
       expect(thisIssue).toBeDefined();
       expect(thisIssue!.description).toContain('this');
 
-      const thisSuggestion = suggestion.suggestions.find((s) => s.includes('.call(this)'));
+      const thisSuggestion = suggestion.suggestions.find((s) =>
+        s.includes('pass `this` or the needed values as parameters')
+      );
       expect(thisSuggestion).toBeDefined();
     });
   });

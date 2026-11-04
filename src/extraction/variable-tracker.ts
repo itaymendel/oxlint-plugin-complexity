@@ -167,7 +167,6 @@ function convertReferences(variable: Variable, functionScope: Scope): VariableRe
   for (const ref of variable.references) {
     const refType = getReferenceType(ref);
     if (!refType) continue;
-    if (isNestedFunctionScope(ref.from, functionScope)) continue;
 
     const identifier = ref.identifier as IdentifierNode;
     references.push({
@@ -175,6 +174,7 @@ function convertReferences(variable: Variable, functionScope: Scope): VariableRe
       column: identifier.loc?.start.column ?? 0,
       type: refType,
       node: ref.identifier as unknown as ESTreeNode,
+      inNestedFunction: isNestedFunctionScope(ref.from, functionScope),
     });
   }
 

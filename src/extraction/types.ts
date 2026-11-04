@@ -19,6 +19,8 @@ export interface VariableReference {
   column: number;
   type: ReferenceType;
   node: ESTreeNode;
+  /** True when the reference sits inside a function nested in the analyzed function */
+  inNestedFunction?: boolean;
 }
 
 export interface ExtractionCandidate {
@@ -36,8 +38,28 @@ export interface VariableFlowAnalysis {
   internalOnly: VariableInfo[];
   mutations: MutationInfo[];
   closures: ClosureInfo[];
+  /** True for any function-level `return` or escaping `break`/`continue`, even a replaceable one */
   hasEarlyReturn: boolean;
+  /** True for `this`, `arguments`, `super` or `new.target` (also inside nested arrow functions) */
   hasThisReference: boolean;
+  earlyExits?: EarlyExit[];
+  asyncBoundaries?: AsyncBoundary[];
+}
+
+export interface EarlyExit {
+  kind: 'return' | 'break' | 'continue';
+  line: number;
+  /** True when `return extracted(...)` at the call site is exact (tail or always-abrupt block) */
+  replaceable: boolean;
+  /** For returns: whether the `return` carries a value */
+  hasArgument?: boolean;
+  /** For labelled `break`/`continue`: the target label */
+  label?: string;
+}
+
+export interface AsyncBoundary {
+  kind: 'await' | 'yield';
+  line: number;
 }
 
 export interface MutationInfo {
@@ -75,7 +97,8 @@ export interface TypedVariable {
  * Confidence level for an extraction suggestion.
  *
  * - `high`: 0-3 inputs, 0-1 outputs, no mutations, no closures
- * - `medium`: 4-5 inputs OR 2 outputs OR minor issues
+ * - `medium`: 4-5 inputs OR 2 outputs OR early exits (`return`, escaping `break`/`continue`),
+ *   `await`/`yield`, or `this`/`arguments`/`super`/`new.target`
  * - `low`: 6+ inputs OR 3+ outputs OR mutations OR closures
  */
 export type ExtractionConfidence = 'high' | 'medium' | 'low';
@@ -99,7 +122,7 @@ export interface ExtractionOptions {
   minComplexityPercentage?: number;
   /** Maximum percentage of complexity for a candidate (default: 70) - rejects whole-function suggestions */
   maxComplexityPercentage?: number;
-  /** Maximum line gap to consider points as contiguous (default: 2) */
+  /** @deprecated Ignored since 4.1.0; candidates are AST statements and blocks. */
   maxLineGap?: number;
   /** Maximum number of candidates to return (default: 3) */
   maxCandidates?: number;

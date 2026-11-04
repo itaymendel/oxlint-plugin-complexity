@@ -82,12 +82,14 @@ describe('Smart Extraction Detection', () => {
 
   describe('Extraction Analysis', () => {
     let jsResult: ExtendedResult;
+    let pureResult: ExtendedResult;
     let tsResult: ExtendedResult;
 
     beforeAll(() => {
       const jsFixture = loadFixture(join(fixturesDir, 'js/extraction-candidate.js'), fixturesDir);
       const jsResults = calculateCognitiveWithTracking(jsFixture.code, 'test.js');
       jsResult = jsResults.get('processOrder')!;
+      pureResult = jsResults.get('describeOrder')!;
 
       const tsFixture = loadFixture(join(fixturesDir, 'ts/extraction-typed.ts'), fixturesDir);
       const tsResults = calculateCognitiveWithTracking(tsFixture.code, 'test.ts');
@@ -99,8 +101,7 @@ describe('Smart Extraction Detection', () => {
         jsResult.node,
         jsResult.points,
         jsResult.total,
-        jsResult.variables,
-        'processOrder'
+        jsResult.variables
       );
 
       expect(suggestions.length).toBe(2);
@@ -108,15 +109,30 @@ describe('Smart Extraction Detection', () => {
 
     it('identifies input variables for extraction', () => {
       const suggestions = analyzeExtractionOpportunities(
+        pureResult.node,
+        pureResult.points,
+        pureResult.total,
+        pureResult.variables
+      );
+
+      expect(suggestions.map((s) => s.inputs.map((i) => i.name))).toEqual([
+        ['order'],
+        ['order', 'config'],
+      ]);
+    });
+
+    it('flags a block containing continue instead of suggesting a signature', () => {
+      const suggestions = analyzeExtractionOpportunities(
         jsResult.node,
         jsResult.points,
         jsResult.total,
-        jsResult.variables,
-        'processOrder'
+        jsResult.variables
       );
 
-      const suggestion = suggestions[0];
-      expect(suggestion.inputs.map((i) => i.name)).toEqual(['order', 'config']);
+      const guard = suggestions.find((s) => s.range.start === 11 && s.range.end === 15)!;
+      expect(guard.confidence).toBe('medium');
+      expect(guard.suggestedSignature).toBeUndefined();
+      expect(guard.issues.map((i) => i.type)).toEqual(['early-return']);
     });
 
     it('calculates complexity percentage for each candidate', () => {
@@ -124,8 +140,7 @@ describe('Smart Extraction Detection', () => {
         jsResult.node,
         jsResult.points,
         jsResult.total,
-        jsResult.variables,
-        'processOrder'
+        jsResult.variables
       );
 
       for (const suggestion of suggestions) {
@@ -139,8 +154,7 @@ describe('Smart Extraction Detection', () => {
         jsResult.node,
         jsResult.points,
         jsResult.total,
-        jsResult.variables,
-        'processOrder'
+        jsResult.variables
       );
 
       for (const suggestion of suggestions) {
@@ -150,16 +164,17 @@ describe('Smart Extraction Detection', () => {
 
     it('generates function signatures for viable extractions', () => {
       const suggestions = analyzeExtractionOpportunities(
-        jsResult.node,
-        jsResult.points,
-        jsResult.total,
-        jsResult.variables,
-        'processOrder'
+        pureResult.node,
+        pureResult.points,
+        pureResult.total,
+        pureResult.variables
       );
 
-      const highConfidence = suggestions.find((s) => s.confidence === 'high');
-      expect(highConfidence).toBeDefined();
-      expect(highConfidence!.suggestedSignature).toBeDefined();
+      expect(suggestions.map((s) => s.confidence)).toEqual(['high', 'high']);
+      expect(suggestions.map((s) => s.suggestedSignature)).toEqual([
+        'extracted(order): unknown',
+        'extracted(order, config): unknown',
+      ]);
     });
 
     it('detects mutation issues', () => {
@@ -167,8 +182,7 @@ describe('Smart Extraction Detection', () => {
         jsResult.node,
         jsResult.points,
         jsResult.total,
-        jsResult.variables,
-        'processOrder'
+        jsResult.variables
       );
 
       const withMutations = suggestions.find((s) => s.issues.some((i) => i.type === 'mutation'));
@@ -182,7 +196,6 @@ describe('Smart Extraction Detection', () => {
         tsResult.points,
         tsResult.total,
         tsResult.variables,
-        'analyzeData',
         { minComplexityPercentage: 15, maxComplexityPercentage: 80 }
       );
 
@@ -229,8 +242,7 @@ describe('Smart Extraction Detection', () => {
         result.node,
         result.points,
         result.total,
-        result.variables,
-        'complex'
+        result.variables
       );
 
       expect(suggestions.length).toBe(2);
@@ -294,28 +306,20 @@ describe('Smart Extraction Detection', () => {
     it('determines which variables are used after the extraction range', () => {
       const code = `
         function compute(data, config) {
-          for (const item of data) {
-            if (item.active) {
-              if (item.value > config.min) {
-                console.log(item.value);
-              }
-            }
-            const processed = item.id + item.value;
-            console.log(processed);
-          }
+          const label = data.express
+            ? data.vip
+              ? 'priority'
+              : 'express'
+            : 'standard';
 
           const factor = config.factor || 1;
-          const base = factor * 2;
-          const extra = base + 1;
+          const scaled = data.express
+            ? data.vip
+              ? factor * 3
+              : factor * 2
+            : factor;
 
-          for (const rule of config.rules || []) {
-            if (rule.enabled) {
-              if (rule.value > extra) {
-                console.log(rule.label);
-              }
-            }
-          }
-          return extra;
+          return label + scaled;
         }
       `;
 
@@ -326,15 +330,10 @@ describe('Smart Extraction Detection', () => {
         result.node,
         result.points,
         result.total,
-        result.variables,
-        'compute'
+        result.variables
       );
 
-      expect(suggestions.length).toBe(2);
-
-      const withOutputs = suggestions.find((s) => s.outputs.length > 0);
-      expect(withOutputs).toBeDefined();
-      expect(withOutputs!.outputs.map((o) => o.name)).toContain('item');
+      expect(suggestions.map((s) => s.outputs.map((o) => o.name))).toEqual([['label'], ['scaled']]);
     });
 
     it('suggests function signatures for clean extractions', () => {
@@ -371,8 +370,7 @@ describe('Smart Extraction Detection', () => {
         result.node,
         result.points,
         result.total,
-        result.variables,
-        'handleItems'
+        result.variables
       );
 
       expect(suggestions.length).toBe(2);
