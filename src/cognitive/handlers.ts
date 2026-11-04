@@ -11,7 +11,7 @@ import type {
   ComplexityPoint,
   FunctionScope,
 } from '../types.js';
-import { isElseIf, isDefaultValuePattern, isJsxShortCircuit, skipParensUp } from './patterns.js';
+import { isElseIf, isDefaultValuePattern, isJsxShortCircuit } from './patterns.js';
 import { isRecursiveCall } from './recursion.js';
 import { createComplexityPoint, DEFAULT_COMPLEXITY_INCREMENT, isFunctionNode } from '../utils.js';
 
@@ -97,7 +97,7 @@ function handleLogicalExpression(node: LogicalExpressionNode, ctx: VisitorContex
   if (!ctx.getScopeFor(node)) return;
   if (isJsxShortCircuit(node) || isDefaultValuePattern(node)) return;
 
-  const parent = skipParensUp(node) as LogicalExpressionNode | undefined;
+  const parent = node.parent as LogicalExpressionNode | undefined;
   const isContinuationOfSameOperator =
     parent?.type === 'LogicalExpression' && parent.operator === node.operator;
 

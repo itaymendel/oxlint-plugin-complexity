@@ -1,10 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { parseSync } from 'oxc-parser';
 import {
   createCombinedComplexityVisitor,
   type CombinedComplexityResult,
 } from '#src/combined-visitor.js';
-import { createMockContext, walkWithVisitor } from './utils/test-helpers.js';
+import { createMockContext, parseLikeOxlint, walkWithVisitor } from './utils/test-helpers.js';
 import type { ESTreeNode } from '#src/types.js';
 
 /**
@@ -100,7 +99,7 @@ describe('minLines configuration', () => {
 
   describe('Line counting', () => {
     it.each(testCases)('should count $expectedLines lines for $name', ({ code, expectedLines }) => {
-      const { program } = parseSync('test.ts', code);
+      const { program } = parseLikeOxlint('test.ts', code);
       const ast = program as unknown as ESTreeNode;
 
       let actualLines = 0;
@@ -164,7 +163,7 @@ describe('minLines configuration', () => {
       'with minLines: $minLines, should analyze: $expectedFunctionsAnalyzed',
       ({ minLines, expectedFunctionsAnalyzed }) => {
         const allCode = testCases.map((tc) => tc.code).join('\n');
-        const { program } = parseSync('test.ts', allCode);
+        const { program } = parseLikeOxlint('test.ts', allCode);
         const ast = program as unknown as ESTreeNode;
 
         const analyzedFunctions: string[] = [];
@@ -202,7 +201,7 @@ describe('minLines configuration', () => {
     it('should correctly calculate complexity for functions that pass minLines threshold', () => {
       const minLines = 10;
       const code = testCases.map((tc) => tc.code).join('\n');
-      const { program } = parseSync('test.ts', code);
+      const { program } = parseLikeOxlint('test.ts', code);
       const ast = program as unknown as ESTreeNode;
 
       const results = new Map<string, { cyclomatic: number; cognitive: number; lines: number }>();
@@ -248,7 +247,7 @@ describe('minLines configuration', () => {
     it('should analyze all functions when minLines is 0', () => {
       const minLines = 0;
       const code = testCases.map((tc) => tc.code).join('\n');
-      const { program } = parseSync('test.ts', code);
+      const { program } = parseLikeOxlint('test.ts', code);
       const ast = program as unknown as ESTreeNode;
 
       const results = new Map<string, { cyclomatic: number; cognitive: number }>();
@@ -294,7 +293,7 @@ describe('minLines configuration', () => {
   describe('Edge cases', () => {
     it('should handle one-liner arrow functions correctly', () => {
       const code = 'const oneLineArrow = (x) => x + 1;';
-      const { program } = parseSync('test.ts', code);
+      const { program } = parseLikeOxlint('test.ts', code);
       const ast = program as unknown as ESTreeNode;
 
       let functionLines = 0;
@@ -323,7 +322,7 @@ describe('minLines configuration', () => {
           return sum;
         }
       `;
-      const { program } = parseSync('test.ts', code);
+      const { program } = parseLikeOxlint('test.ts', code);
       const ast = program as unknown as ESTreeNode;
 
       let functionLines = 0;
@@ -344,7 +343,7 @@ describe('minLines configuration', () => {
 
     it('should handle functions without loc gracefully', () => {
       const code = 'function test() { return 1; }';
-      const { program } = parseSync('test.ts', code);
+      const { program } = parseLikeOxlint('test.ts', code);
       const ast = program as unknown as ESTreeNode;
 
       let analyzedCount = 0;

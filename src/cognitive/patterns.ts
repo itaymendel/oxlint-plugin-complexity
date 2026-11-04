@@ -1,32 +1,11 @@
 import type { ESTreeNode, LogicalExpressionNode, IfStatementNode } from '../types.js';
-import { includes, unwrapExpression } from '../utils.js';
+import { includes, isTransparentExpression, unwrapExpression } from '../utils.js';
 
 const DEFAULT_VALUE_OPERATORS = ['||', '??'] as const;
-const LITERAL_TYPES = new Set(['Literal', 'ArrayExpression', 'ObjectExpression']);
 
 export function isElseIf(node: IfStatementNode): boolean {
   const parent = node.parent as IfStatementNode | undefined;
   return parent?.type === 'IfStatement' && parent.alternate === node;
-}
-
-function skipParensDown(node: ESTreeNode): ESTreeNode {
-  let current = node;
-  while (current.type === 'ParenthesizedExpression') {
-    current = (current as ESTreeNode & { expression: ESTreeNode }).expression;
-  }
-  return current;
-}
-
-/**
- * Nearest ancestor that is not a ParenthesizedExpression. The oxlint runtime AST never contains
- * parentheses, but parsers that preserve them do, so structure checks must skip them.
- */
-export function skipParensUp(node: ESTreeNode): ESTreeNode | undefined {
-  let parent = node.parent ?? undefined;
-  while (parent?.type === 'ParenthesizedExpression') {
-    parent = parent.parent ?? undefined;
-  }
-  return parent;
 }
 
 /**
@@ -41,12 +20,12 @@ function getRightmostInChain(
   node: LogicalExpressionNode,
   operators: readonly string[]
 ): ESTreeNode {
-  let current = skipParensDown(node.right);
+  let current = node.right;
   while (
     current.type === 'LogicalExpression' &&
     operators.includes((current as LogicalExpressionNode).operator)
   ) {
-    current = skipParensDown((current as LogicalExpressionNode).right);
+    current = (current as LogicalExpressionNode).right;
   }
   return current;
 }
@@ -87,14 +66,41 @@ function isNoopCallback(node: ESTreeNode): boolean {
 
 function isSignedNumber(node: ESTreeNode): boolean {
   const { operator, argument } = node as ESTreeNode & { operator: string; argument: ESTreeNode };
-  return (operator === '-' || operator === '+') && isNumericLiteral(skipParensDown(argument));
+  return (operator === '-' || operator === '+') && isNumericLiteral(argument);
+}
+
+// Holes count as constant; spreads are not constant fallbacks, so they fail the element check
+function isConstantArray(node: ESTreeNode): boolean {
+  const { elements } = node as ESTreeNode & { elements: Array<ESTreeNode | null> };
+  return elements.every((element) => element === null || isConstantFallback(element));
+}
+
+// Spreads, computed keys, methods and accessors can run code
+function isConstantProperty(property: ESTreeNode): boolean {
+  if (property.type !== 'Property') return false;
+  const { computed, method, kind, value } = property as ESTreeNode & {
+    computed: boolean;
+    method: boolean;
+    kind: string;
+    value: ESTreeNode;
+  };
+  return !computed && !method && kind === 'init' && isConstantFallback(value);
+}
+
+function isConstantObject(node: ESTreeNode): boolean {
+  return (node as ESTreeNode & { properties: ESTreeNode[] }).properties.every(isConstantProperty);
 }
 
 function isConstantFallback(node: ESTreeNode): boolean {
   const unwrapped = unwrapExpression(node);
-  if (LITERAL_TYPES.has(unwrapped.type)) return true;
 
   switch (unwrapped.type) {
+    case 'Literal':
+      return true;
+    case 'ArrayExpression':
+      return isConstantArray(unwrapped);
+    case 'ObjectExpression':
+      return isConstantObject(unwrapped);
     case 'UnaryExpression':
       return isSignedNumber(unwrapped);
     case 'Identifier':
@@ -106,17 +112,69 @@ function isConstantFallback(node: ESTreeNode): boolean {
   }
 }
 
+function isConditionOf(parent: ESTreeNode, child: ESTreeNode): boolean {
+  switch (parent.type) {
+    case 'IfStatement':
+    case 'WhileStatement':
+    case 'DoWhileStatement':
+    case 'ForStatement':
+    case 'ConditionalExpression':
+      return (parent as ESTreeNode & { test: ESTreeNode | null }).test === child;
+    default:
+      return false;
+  }
+}
+
+function isTransparentForCondition(parent: ESTreeNode): boolean {
+  return (
+    isTransparentExpression(parent) ||
+    parent.type === 'LogicalExpression' ||
+    (parent.type === 'UnaryExpression' &&
+      (parent as ESTreeNode & { operator: string }).operator === '!')
+  );
+}
+
+/**
+ * Whether the expression is a branch condition, directly or through TS wrappers, `!`,
+ * or as an operand of an enclosing logical expression.
+ */
+function isInConditionPosition(node: ESTreeNode): boolean {
+  let child = node;
+  let parent = node.parent ?? undefined;
+  while (parent && isTransparentForCondition(parent)) {
+    child = parent;
+    parent = parent.parent ?? undefined;
+  }
+  return parent !== undefined && isConditionOf(parent, child);
+}
+
+function countChainOperands(node: ESTreeNode): number {
+  if (
+    node.type !== 'LogicalExpression' ||
+    !includes(DEFAULT_VALUE_OPERATORS, (node as LogicalExpressionNode).operator)
+  ) {
+    return 1;
+  }
+  const { left, right } = node as LogicalExpressionNode;
+  return countChainOperands(left) + countChainOperands(right);
+}
+
 /**
  * A `||` / `??` chain whose rightmost operand is a constant fallback, in any position:
- * literal, array/object literal, signed number, `undefined`, template literal without
- * expressions, or no-op callback (also through parentheses and TS `as`/`satisfies`/`!`/`<T>x`).
+ * literal, constant array/object literal, signed number, `undefined`, template literal without
+ * expressions, or no-op callback (also through TS `as`/`satisfies`/`!`/`<T>x`).
+ * In a condition (`if`, loops, ternary test) only a single operand before the fallback is
+ * exempt, so a trailing constant cannot hide real conditions.
  */
 export function isDefaultValuePattern(node: LogicalExpressionNode): boolean {
   if (!includes(DEFAULT_VALUE_OPERATORS, node.operator)) {
     return false;
   }
+  if (!isConstantFallback(getRightmostInChain(node, DEFAULT_VALUE_OPERATORS))) {
+    return false;
+  }
 
-  return isConstantFallback(getRightmostInChain(node, DEFAULT_VALUE_OPERATORS));
+  return countChainOperands(node) === 2 || !isInConditionPosition(node);
 }
 
 export function isJsxShortCircuit(node: LogicalExpressionNode): boolean {
