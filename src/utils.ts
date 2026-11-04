@@ -33,6 +33,11 @@ export function isFunctionNode(node: ESTreeNode): boolean {
   return FUNCTION_NODE_TYPES.has(node.type);
 }
 
+/** Whether the node is a paren or TS wrapper that does not change the wrapped value. */
+export function isTransparentExpression(node: ESTreeNode): boolean {
+  return TRANSPARENT_EXPRESSION_TYPES.has(node.type);
+}
+
 export function unwrapExpression(node: ESTreeNode): ESTreeNode {
   let current = node;
   while (TRANSPARENT_EXPRESSION_TYPES.has(current.type) && 'expression' in current) {

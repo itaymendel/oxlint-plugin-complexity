@@ -38,6 +38,9 @@ export interface CombinedComplexityResult {
 /**
  * Create a combined visitor that calculates both cyclomatic and cognitive complexity
  * in a single AST walk.
+ *
+ * ASTs passed to this visitor should be parsed without parenthesized-expression nodes
+ * (e.g. oxc-parser's `preserveParens: false`), matching oxlint's own AST shape.
  */
 // eslint-disable-next-line complexity/complexity -- Visitor factory pattern requires many nested handlers
 export function createCombinedComplexityVisitor(

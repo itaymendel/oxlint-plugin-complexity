@@ -112,7 +112,7 @@ export function walkAndDispatch(
  * complexity visitor, and returns results for every function in the file.
  */
 export function analyzeFileComplexity(code: string, filename: string): FileAnalysisResult {
-  const { program, errors } = parseSync(filename, code);
+  const { program, errors } = parseSync(filename, code, { preserveParens: false });
 
   if (errors.length > 0) {
     throw new Error(`Parse errors in "${filename}": ${errors.map((e) => e.message).join(', ')}`);

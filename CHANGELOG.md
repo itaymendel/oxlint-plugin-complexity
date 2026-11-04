@@ -9,14 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Exempt `||`/`??` chains ending in a constant fallback (literals, `[]`, `{}`, `-1`, `undefined`, plain templates, no-op callbacks) from cognitive complexity in any position (#173, #174).
+- Exempt `||`/`??` chains ending in a constant fallback from cognitive complexity in any position, except extra operands in conditions (#173, #174).
 
 ### Fixed
 
 - Extraction suggestions now use whole statements and blocks instead of line clusters, and flag `return`, escaping `break`/`continue`, `await`/`yield`, and `this` in arrow callbacks (#175).
 - Extraction no longer suggests a signature inside nested functions (#175).
 - Make refactoring tips accurate: the boolean-logic and nesting tips now recommend extracting helper functions, which actually lower the score (#176).
-- Score parenthesized `||`/`??`/`&&` chains in `standalone`/`diff` like the lint rule (#173, #174).
+- `standalone`/`diff` now parse without parenthesized-expression nodes, so parenthesized code scores like the lint rule (#173, #174).
 
 ## [4.0.0] - 2026-10-11
 

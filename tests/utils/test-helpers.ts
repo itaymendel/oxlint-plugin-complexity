@@ -99,6 +99,11 @@ export function walkWithVisitor(
   walkAndDispatch(ast, code, visitor);
 }
 
+/** Parse like oxlint's runtime AST: no ParenthesizedExpression nodes. */
+export function parseLikeOxlint(filename: string, code: string) {
+  return parseSync(filename, code, { preserveParens: false });
+}
+
 /**
  * Parse code and prepare AST with parent refs and loc for scope analysis.
  */
@@ -106,7 +111,7 @@ export function parseAndPrepareAst(
   code: string,
   filename: string
 ): { program: ESTreeNode; errors: Array<{ message: string }> } {
-  const { program, errors } = parseSync(filename, code);
+  const { program, errors } = parseLikeOxlint(filename, code);
 
   if (errors.length === 0) {
     prepareAstForAnalysis(program as unknown as ESTreeNode, code);
@@ -126,7 +131,7 @@ function calculateStandaloneComplexityWithVisitor(
   filename: string,
   type: 'cyclomatic' | 'cognitive'
 ): Map<string, ComplexityFunctionResult> {
-  const { program, errors } = parseSync(filename, code);
+  const { program, errors } = parseLikeOxlint(filename, code);
 
   if (errors.length > 0) {
     throw new Error(`Parse errors in "${filename}": ${errors.map((e) => e.message).join(', ')}`);
@@ -212,7 +217,7 @@ export function calculateCombinedComplexity(
   cyclomatic: Map<string, ComplexityFunctionResult>;
   cognitive: Map<string, ComplexityFunctionResult>;
 } {
-  const { program, errors } = parseSync(filename, code);
+  const { program, errors } = parseLikeOxlint(filename, code);
 
   if (errors.length > 0) {
     throw new Error(`Parse errors in "${filename}": ${errors.map((e) => e.message).join(', ')}`);

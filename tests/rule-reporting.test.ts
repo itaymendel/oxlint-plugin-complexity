@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { parseSync } from 'oxc-parser';
 import { complexity } from '#src/rules/complexity.js';
 import { analyzeFileComplexity } from '#src/standalone.js';
-import { createMockContext, walkWithVisitor } from './utils/test-helpers.js';
+import { createMockContext, parseLikeOxlint, walkWithVisitor } from './utils/test-helpers.js';
 import type { Context, ESTreeNode, VisitorWithHooks } from '#src/types.js';
 
 /**
@@ -23,7 +22,7 @@ function lint(code: string, options: Record<string, unknown>): string[] {
   const visitor = complexity.createOnce!(context) as VisitorWithHooks;
   visitor.before?.();
 
-  const { program, errors } = parseSync('test.ts', code);
+  const { program, errors } = parseLikeOxlint('test.ts', code);
   if (errors.length > 0) {
     throw new Error(errors.map((e) => e.message).join(', '));
   }

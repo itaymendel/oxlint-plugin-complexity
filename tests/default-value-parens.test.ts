@@ -1,33 +1,39 @@
-import { parseSync } from 'oxc-parser';
 import { describe, it, expect } from 'vitest';
-import { createCognitiveVisitor } from '../src/cognitive/visitor.js';
-import type { ESTreeNode } from '../src/types.js';
-import { walkWithVisitor } from './utils/test-helpers.js';
+import { analyzeFileComplexity } from '#src/standalone.js';
 
-function cognitiveTotal(code: string, filename: string, preserveParens: boolean): number {
-  const { program, errors } = parseSync(filename, code, { preserveParens });
-  expect(errors).toEqual([]);
-  let total = 0;
-  const visitor = createCognitiveVisitor((result) => {
-    total += result.total;
-  });
-  walkWithVisitor(program as unknown as ESTreeNode, visitor, code);
-  return total;
+function scores(code: string, filename = 'test.ts'): Record<string, number> {
+  const { functions } = analyzeFileComplexity(code, filename);
+  return Object.fromEntries(functions.map((fn) => [fn.name, fn.cognitive]));
 }
 
-// The oxlint runtime AST never contains ParenthesizedExpression; tests parse with parentheses.
-describe('parenthesized expressions are scored like the oxlint runtime AST', () => {
+// oxlint's runtime AST never contains ParenthesizedExpression, so standalone/diff must not either.
+describe('standalone scores parenthesized code like the lint rule', () => {
   it.each([
     ['a ?? (b ?? "x")', 0, 'test.ts'],
+    ['(a ?? b) ?? "x"', 0, 'test.ts'],
     ['a || (b || c)', 1, 'test.ts'],
+    ['(a || b) || c', 1, 'test.ts'],
     ['(a && b) || []', 1, 'test.ts'],
     ['a ?? ([] as const)', 0, 'test.ts'],
+    ['n ?? -(1)', 0, 'test.ts'],
     ['cond && (<div />)', 0, 'test.tsx'],
   ])('%s', (expression, expected, filename) => {
-    const code = `function f(a, b, c, cond) { return ${expression}; }`;
-    const withParens = cognitiveTotal(code, filename, true);
-    const withoutParens = cognitiveTotal(code, filename, false);
-    expect(withParens).toBe(withoutParens);
-    expect(withParens).toBe(expected);
+    const code = `function f(a, b, c, n, cond) { return ${expression}; }`;
+    expect(scores(code, filename)).toEqual({ f: expected });
+  });
+
+  it('counts a parenthesized recursive callee', () => {
+    expect(scores('function foo(a){ return (foo)(a) }')).toEqual({ foo: 1 });
+  });
+
+  it('scores a parenthesized arrow in a ternary branch', () => {
+    const code = 'function f(c,x){ return c ? (() => { if (x) {} }) : 1 }';
+    // f scores 1 for the ternary; the arrow in the branch scores 2 (if + 1 nesting)
+    expect(Object.values(scores(code)).sort()).toEqual([1, 2]);
+  });
+
+  it('applies the condition limit through parentheses', () => {
+    expect(scores('function f(a,b){ if ((a || b || false)) {} }').f).toBe(2);
+    expect(scores('function f(a){ if ((a ?? false)) {} }').f).toBe(1);
   });
 });
