@@ -115,19 +115,19 @@ Measures how difficult code is to understand by penalizing nesting. [Learn more]
 - **Nested scopes:** Functions, class field initializers, and `static {}` blocks are scored independently (top-level start at nesting 0; nested units start at the enclosing scope nesting +1. nested function adds no points to the enclosing scope).
 - **Excluded:**
   - React components gated by logical ANDs (`show && <Component />`)
-  - Default value fallbacks, anywhere: a `||`/`??` chain ending in a constant (literal, `[]`/`{}` with constant contents, `-1`, `undefined`, plain template, no-op callback), optionally wrapped in `as`/`satisfies`/`!` (`f(a ?? "")`). `a || b()` still counts, and in a condition only `a ?? false` (one operand) is exempt.
+  - Default value fallbacks anywhere: a `||`/`??` chain ending in a constant (`""`, `[]`, `{}`, `-1`, `undefined`, `() => {}`). Not `a || b()`, `a ?? [b()]`, or longer chains in conditions (`if (a || b || false)`)
 
 ### Refactoring Tips
 
 Detects common complexity patterns and provides actionable tips:
 
-- **Deep nesting** (`nestingTipThreshold`): Suggests moving the whole deeply nested statement into a top-level helper function
+- **Deep nesting** (`nestingTipThreshold`): Suggests moving the nested statement into a top-level helper
 - **Long else-if chains** (`elseIfChainThreshold`): Recommends a lookup object or switch statement
-- **Logical operator sequences** (`logicalOperatorThreshold`): Suggests moving the conditions into well-named helper functions (named boolean variables improve readability but don't lower the score)
+- **Logical operator sequences** (`logicalOperatorThreshold`): Suggests moving the conditions into named helper functions
 
 ### Extraction Suggestions
 
-Analyzes variable flow to identify extractable code blocks (enabled by default, disable with `enableExtraction: false`). Suggestions are whole statements or blocks (`if`/`else` chains, loops, `switch` cases, `try` blocks, declarations), never split mid-statement. Blocks containing a `return`, an escaping `break`/`continue`, or `await`/`yield` are marked "some refactoring" with a concrete fix in the issue and no suggested signature:
+Suggests whole statements and blocks to extract (enabled by default, disable with `enableExtraction: false`). Blocks with a `return`, an escaping `break`/`continue`, `await`/`yield` or `this` get a concrete fix instead of a signature:
 
 **Example output:**
 
@@ -159,8 +159,8 @@ Suggested: processBlock(config: Config, results: number[]): void
 Extraction suggestions use static analysis heuristics and may miss:
 
 - **Globals/module variables** (not tracked by variable flow analysis)
-- **Complex flows** (closures, dynamic properties, indirect mutations, `var` shared across loop iterations)
-- **Enclosing variables**: inputs of a block in a nested function omit the enclosing function's variables, so such blocks get an issue and no signature
+- **Complex flows** (closures, dynamic properties, indirect mutations, `var` in loops)
+- **Enclosing variables** in nested functions: they aren't listed as inputs, so these blocks get no signature
 - **Runs of sibling statements**, one-line blocks, class field initializers, arrow expression bodies, and flat functions with many small increments
 
 Always review suggestions before applying, even when marked "high confidence".
