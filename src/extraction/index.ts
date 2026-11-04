@@ -3,9 +3,10 @@ export { formatExtractionSuggestions } from './formatter.js';
 
 import type { ESTreeNode, ComplexityPoint } from '../types.js';
 import type { ExtractionSuggestion, ExtractionOptions, VariableInfo } from './types.js';
-import { findExtractionCandidates } from './boundary-detector.js';
+import { findExtractionCandidates, selectBest } from './boundary-detector.js';
 import { analyzeVariableFlow } from './flow-analyzer.js';
-import { createExtractionSuggestion } from './suggestion-generator.js';
+import { createExtractionSuggestion, markNested } from './suggestion-generator.js';
+import { isNestedFunction } from './ast-utils.js';
 
 const DEFAULT_MIN_COMPLEXITY_MULTIPLIER = 1.5;
 
@@ -20,15 +21,17 @@ export function analyzeExtractionOpportunities(
     return [];
   }
 
-  const candidates = findExtractionCandidates(points, totalComplexity, options);
+  const candidates = findExtractionCandidates(functionNode, points, totalComplexity, options);
   if (candidates.length === 0) {
     return [];
   }
 
-  return candidates.map((candidate) => {
+  const ranked = candidates.map((candidate) => {
     const flow = analyzeVariableFlow(candidate, variables, functionNode);
-    return createExtractionSuggestion(candidate, flow);
+    return { candidate, flow, suggestion: createExtractionSuggestion(candidate, flow) };
   });
+  const selected = selectBest(ranked, options);
+  return isNestedFunction(functionNode) ? selected.map(markNested) : selected;
 }
 
 export function shouldAnalyzeExtraction(

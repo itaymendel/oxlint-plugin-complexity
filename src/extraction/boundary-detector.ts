@@ -1,11 +1,15 @@
-import type { ComplexityPoint } from '../types.js';
-import type { ExtractionCandidate, ExtractionOptions } from './types.js';
+import type { ComplexityPoint, ESTreeNode } from '../types.js';
+import type { ExtractionOptions, ExtractionSuggestion, VariableFlowAnalysis } from './types.js';
+import type { AstUnit, UnitCandidate } from './unit-finder.js';
 import { extractConstructFromMessage } from '../utils.js';
+import { findUnits, indexPoints, pointsInUnit } from './unit-finder.js';
 
 const DEFAULT_MIN_COMPLEXITY_PERCENTAGE = 30;
 const DEFAULT_MAX_COMPLEXITY_PERCENTAGE = 70; // Reject candidates covering too much of the function
-const DEFAULT_MAX_LINE_GAP = 2;
 const DEFAULT_MAX_CANDIDATES = 3;
+
+/** When two units cover the same lines, the statement is the more natural description. */
+const KIND_PRIORITY = { statement: 0, body: 1, case: 2 } as const;
 
 /** Strip surrounding quotes from construct names like "'if'" */
 function extractConstruct(message: string): string {
@@ -20,110 +24,148 @@ function getUniqueConstructs(points: ComplexityPoint[]): string[] {
   return Array.from(constructs);
 }
 
-interface PointGroup {
-  points: ComplexityPoint[];
-  startLine: number;
-  endLine: number;
-  totalComplexity: number;
-}
-
-function groupAdjacentPoints(points: ComplexityPoint[], maxLineGap: number): PointGroup[] {
-  if (points.length === 0) return [];
-
-  const sorted = points.toSorted((a, b) => a.location.start.line - b.location.start.line);
-
-  const groups: PointGroup[] = [];
-  let currentGroup: PointGroup = {
-    points: [sorted[0]],
-    startLine: sorted[0].location.start.line,
-    endLine: sorted[0].location.start.line,
-    totalComplexity: sorted[0].complexity,
-  };
-
-  for (let i = 1; i < sorted.length; i++) {
-    const point = sorted[i];
-    const pointStartLine = point.location.start.line;
-
-    if (pointStartLine <= currentGroup.endLine + maxLineGap) {
-      currentGroup.points.push(point);
-      currentGroup.endLine = pointStartLine;
-      currentGroup.totalComplexity += point.complexity;
-    } else {
-      groups.push(currentGroup);
-      currentGroup = {
-        points: [point],
-        startLine: pointStartLine,
-        endLine: pointStartLine,
-        totalComplexity: point.complexity,
-      };
-    }
-  }
-
-  groups.push(currentGroup);
-  return groups;
-}
-
-function groupToCandidate(group: PointGroup, totalComplexity: number): ExtractionCandidate {
-  const lastPoint = group.points[group.points.length - 1];
-  const actualEndLine = lastPoint.location.end.line;
-
-  return {
-    startLine: group.startLine,
-    endLine: actualEndLine,
-    complexity: group.totalComplexity,
-    complexityPercentage: Math.round((group.totalComplexity / totalComplexity) * 100),
-    points: group.points,
-    constructs: getUniqueConstructs(group.points),
-  };
-}
-
-function candidatesOverlap(a: ExtractionCandidate, b: ExtractionCandidate): boolean {
+function candidatesOverlap(a: UnitCandidate, b: UnitCandidate): boolean {
   return a.startLine <= b.endLine && b.startLine <= a.endLine;
 }
 
-function selectNonOverlapping(
-  candidates: ExtractionCandidate[],
-  maxCandidates: number
-): ExtractionCandidate[] {
-  const sorted = candidates.toSorted((a, b) => b.complexity - a.complexity);
-  const selected: ExtractionCandidate[] = [];
+type FoundCandidate = UnitCandidate & { unit: AstUnit };
 
-  for (const candidate of sorted) {
-    if (selected.length >= maxCandidates) break;
-
-    const overlaps = selected.some((s) => candidatesOverlap(s, candidate));
-    if (!overlaps) {
-      selected.push(candidate);
-    }
-  }
-
-  return selected.toSorted((a, b) => a.startLine - b.startLine);
+function toCandidate(
+  unit: AstUnit,
+  points: ComplexityPoint[],
+  complexity: number,
+  complexityPercentage: number
+): FoundCandidate {
+  return {
+    startLine: unit.start.line,
+    endLine: unit.end.line,
+    complexity,
+    complexityPercentage,
+    points,
+    constructs: getUniqueConstructs(points),
+    unit,
+  };
 }
 
+function keepPreferred(
+  existing: FoundCandidate | undefined,
+  candidate: FoundCandidate
+): FoundCandidate {
+  if (!existing) return candidate;
+  return KIND_PRIORITY[candidate.unit.kind] < KIND_PRIORITY[existing.unit.kind]
+    ? candidate
+    : existing;
+}
+
+/**
+ * All AST units of the function whose share of the total complexity is inside the
+ * configured window, one per distinct line range. Selection happens later, after flow analysis.
+ */
 export function findExtractionCandidates(
+  functionNode: ESTreeNode,
   points: ComplexityPoint[],
   totalComplexity: number,
   options?: ExtractionOptions
-): ExtractionCandidate[] {
+): UnitCandidate[] {
   const opts = options ?? {};
   const minPercentage = opts.minComplexityPercentage ?? DEFAULT_MIN_COMPLEXITY_PERCENTAGE;
   const maxPercentage = opts.maxComplexityPercentage ?? DEFAULT_MAX_COMPLEXITY_PERCENTAGE;
-  const maxLineGap = opts.maxLineGap ?? DEFAULT_MAX_LINE_GAP;
-  const maxCandidates = opts.maxCandidates ?? DEFAULT_MAX_CANDIDATES;
 
   if (points.length === 0 || totalComplexity === 0) {
     return [];
   }
 
-  const groups = groupAdjacentPoints(points, maxLineGap);
+  const index = indexPoints(points);
+  const byRange = new Map<string, FoundCandidate>();
 
-  const candidates = groups
-    .map((group) => groupToCandidate(group, totalComplexity))
-    .filter(
-      (candidate) =>
-        candidate.complexityPercentage >= minPercentage &&
-        candidate.complexityPercentage <= maxPercentage
-    );
+  for (const unit of findUnits(functionNode)) {
+    const inUnit = pointsInUnit(index, unit);
+    if (inUnit.complexity === 0) continue;
+    const percentage = Math.round((inUnit.complexity / totalComplexity) * 100);
+    if (percentage < minPercentage || percentage > maxPercentage) continue;
+    const candidate = toCandidate(unit, inUnit.points, inUnit.complexity, percentage);
+    const key = `${candidate.startLine}-${candidate.endLine}`;
+    byRange.set(key, keepPreferred(byRange.get(key), candidate));
+  }
 
-  return selectNonOverlapping(candidates, maxCandidates);
+  return [...byRange.values()];
+}
+
+interface RankedCandidate {
+  candidate: UnitCandidate;
+  flow: VariableFlowAnalysis;
+  suggestion: ExtractionSuggestion;
+}
+
+const CONFIDENCE_RANK = { high: 3, medium: 2, low: 1 } as const;
+
+function isStrictlyInside(inner: UnitCandidate, outer: UnitCandidate): boolean {
+  const sameRange = inner.startLine === outer.startLine && inner.endLine === outer.endLine;
+  return !sameRange && inner.startLine >= outer.startLine && inner.endLine <= outer.endLine;
+}
+
+/** A unit is dominated when a unit strictly inside it is more confidently extractable. */
+function isDominated(entry: RankedCandidate, all: RankedCandidate[]): boolean {
+  return all.some(
+    (other) =>
+      isStrictlyInside(other.candidate, entry.candidate) &&
+      CONFIDENCE_RANK[other.suggestion.confidence] > CONFIDENCE_RANK[entry.suggestion.confidence]
+  );
+}
+
+function exitCount(entry: RankedCandidate): number {
+  return entry.flow.earlyExits?.length ?? 0;
+}
+
+/** Replaceable exits (`return extracted(...)`) are the more mechanical refactor. */
+function hasNonReplaceableExit(entry: RankedCandidate): number {
+  return entry.flow.earlyExits?.some((exit) => !exit.replaceable) ? 1 : 0;
+}
+
+function span(entry: RankedCandidate): number {
+  return entry.candidate.endLine - entry.candidate.startLine;
+}
+
+const TIE_BREAKERS: Array<(a: RankedCandidate, b: RankedCandidate) => number> = [
+  (a, b) => b.candidate.complexity - a.candidate.complexity,
+  (a, b) => exitCount(a) - exitCount(b),
+  (a, b) => hasNonReplaceableExit(a) - hasNonReplaceableExit(b),
+  (a, b) =>
+    Number(b.candidate.unit?.compound ?? false) - Number(a.candidate.unit?.compound ?? false),
+  (a, b) => a.flow.inputs.length - b.flow.inputs.length,
+  (a, b) => a.flow.outputs.length - b.flow.outputs.length,
+  (a, b) => span(a) - span(b),
+  (a, b) => a.candidate.startLine - b.candidate.startLine,
+];
+
+function compareRanked(a: RankedCandidate, b: RankedCandidate): number {
+  for (const compare of TIE_BREAKERS) {
+    const result = compare(a, b);
+    if (result !== 0) return result;
+  }
+  return 0;
+}
+
+/**
+ * Pick up to `maxCandidates` non-overlapping suggestions: drop units dominated by a better nested
+ * unit, then greedily take the highest-complexity ones. Returned in source order.
+ */
+export function selectBest(
+  entries: RankedCandidate[],
+  options?: ExtractionOptions
+): ExtractionSuggestion[] {
+  const maxCandidates = options?.maxCandidates ?? DEFAULT_MAX_CANDIDATES;
+  const sorted = entries.filter((entry) => !isDominated(entry, entries)).toSorted(compareRanked);
+  const selected: RankedCandidate[] = [];
+
+  for (const entry of sorted) {
+    if (selected.length >= maxCandidates) break;
+    if (!selected.some((s) => candidatesOverlap(s.candidate, entry.candidate))) {
+      selected.push(entry);
+    }
+  }
+
+  return selected
+    .toSorted((a, b) => a.candidate.startLine - b.candidate.startLine)
+    .map((entry) => entry.suggestion);
 }

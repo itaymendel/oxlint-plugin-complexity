@@ -1,12 +1,8 @@
 import type { ESTreeNode } from '../types.js';
-import { isFunctionNode } from '../utils.js';
-import type {
-  VariableInfo,
-  ExtractionCandidate,
-  VariableFlowAnalysis,
-  MutationInfo,
-  ClosureInfo,
-} from './types.js';
+import type { VariableInfo, VariableFlowAnalysis, MutationInfo, ClosureInfo } from './types.js';
+import type { UnitCandidate } from './unit-finder.js';
+import { getLine, getNodeProp, isNodeLike, walkInRange, walkNodes } from './ast-utils.js';
+import { analyzeControlFlow, detectThisReferences } from './control-flow.js';
 
 function hasReadsInRange(variable: VariableInfo, startLine: number, endLine: number): boolean {
   return variable.references.some(
@@ -41,7 +37,7 @@ function isDeclaredInRange(variable: VariableInfo, startLine: number, endLine: n
 }
 
 function detectDirectMutations(
-  candidate: ExtractionCandidate,
+  candidate: UnitCandidate,
   variables: Map<string, VariableInfo>
 ): MutationInfo[] {
   const mutations: MutationInfo[] = [];
@@ -68,10 +64,11 @@ function isClosureNode(node: ESTreeNode): boolean {
 
 function findEnclosingClosure(
   startNode: ESTreeNode | null | undefined,
-  candidate: ExtractionCandidate
+  candidate: UnitCandidate
 ): { startLine: number; endLine: number } | null {
   let current: ESTreeNode | null | undefined = startNode;
-  while (current) {
+  // Ancestors only start earlier, so once one starts before the candidate none can qualify
+  while (current && getLine(current) >= candidate.startLine) {
     if (isClosureNode(current)) {
       const funcLine = current.loc?.start.line ?? 0;
       const funcEndLine = current.loc?.end.line ?? 0;
@@ -85,7 +82,7 @@ function findEnclosingClosure(
 }
 
 function detectClosures(
-  candidate: ExtractionCandidate,
+  candidate: UnitCandidate,
   variables: Map<string, VariableInfo>
 ): ClosureInfo[] {
   const closures: ClosureInfo[] = [];
@@ -94,7 +91,9 @@ function detectClosures(
     if (!variable.isMutable || variable.declarationLine >= candidate.startLine) continue;
 
     for (const ref of variable.references) {
-      if (ref.line < candidate.startLine || ref.line > candidate.endLine) continue;
+      // Reads/writes inside callbacks are already handled as inputs, outputs and mutations
+      const outsideRange = ref.line < candidate.startLine || ref.line > candidate.endLine;
+      if (ref.inNestedFunction || outsideRange) continue;
 
       const closure = findEnclosingClosure(ref.node.parent, candidate);
       if (closure) {
@@ -112,20 +111,6 @@ function detectClosures(
   return closures;
 }
 
-const SKIP_WALK_KEYS = new Set(['parent', 'loc', 'range']);
-
-function isNodeLike(value: unknown): value is ESTreeNode {
-  return typeof value === 'object' && value !== null && 'type' in value;
-}
-
-function isOutsideRange(n: ESTreeNode, startLine: number, endLine: number): boolean {
-  return !!n.loc && (n.loc.end.line < startLine || n.loc.start.line > endLine);
-}
-
-function getNodeProp(n: ESTreeNode, key: string): unknown {
-  return (n as unknown as Record<string, unknown>)[key];
-}
-
 /**
  * Walk a MemberExpression chain (e.g. `a.b.c.d`) to its root Identifier.
  * Returns null for non-Identifier roots (e.g. `getObj().prop`).
@@ -141,36 +126,6 @@ function resolveRootIdentifier(node: ESTreeNode): string | null {
     return getNodeProp(current, 'name') as string;
   }
   return null;
-}
-
-function walkChildren(n: ESTreeNode, visit: (child: ESTreeNode) => void): void {
-  for (const key of Object.keys(n)) {
-    if (SKIP_WALK_KEYS.has(key)) continue;
-    const child = getNodeProp(n, key);
-    if (Array.isArray(child)) {
-      for (const item of child) {
-        if (isNodeLike(item)) visit(item);
-      }
-    } else if (isNodeLike(child)) {
-      visit(child);
-    }
-  }
-}
-
-function walkInRange(
-  root: ESTreeNode,
-  startLine: number,
-  endLine: number,
-  visitor: (n: ESTreeNode) => void
-): void {
-  function walk(n: ESTreeNode): void {
-    if (isOutsideRange(n, startLine, endLine)) return;
-    // Nested functions and class members have their own `this`/scope
-    if (n !== root && (isFunctionNode(n) || n.type === 'ClassBody')) return;
-    visitor(n);
-    walkChildren(n, walk);
-  }
-  walk(root);
 }
 
 /**
@@ -218,7 +173,7 @@ function checkPropertyAssignment(
   if (!isNodeLike(left) || left.type !== 'MemberExpression') return null;
   const variable = findExternalVariable(left, variables, startLine, endLine);
   if (!variable) return null;
-  return { variable, mutationLine: n.loc?.start.line ?? 0, mutationType: 'assignment' };
+  return { variable, mutationLine: getLine(n), mutationType: 'assignment' };
 }
 
 function checkPropertyUpdate(
@@ -231,7 +186,7 @@ function checkPropertyUpdate(
   if (!isNodeLike(arg) || arg.type !== 'MemberExpression') return null;
   const variable = findExternalVariable(arg, variables, startLine, endLine);
   if (!variable) return null;
-  return { variable, mutationLine: n.loc?.start.line ?? 0, mutationType: 'increment' };
+  return { variable, mutationLine: getLine(n), mutationType: 'increment' };
 }
 
 function checkMethodCallMutation(
@@ -248,7 +203,7 @@ function checkMethodCallMutation(
   if (!MUTATING_METHODS.has(methodName)) return null;
   const variable = findExternalVariable(callee, variables, startLine, endLine);
   if (!variable) return null;
-  return { variable, mutationLine: n.loc?.start.line ?? 0, mutationType: 'method-call' };
+  return { variable, mutationLine: getLine(n), mutationType: 'method-call' };
 }
 
 const AST_MUTATION_CHECKERS: Record<string, typeof checkPropertyAssignment> = {
@@ -262,64 +217,24 @@ const AST_MUTATION_CHECKERS: Record<string, typeof checkPropertyAssignment> = {
  * and mutating method calls (arr.push(...)) on variables declared outside the candidate range.
  */
 function detectAstMutations(
-  candidate: ExtractionCandidate,
+  candidate: UnitCandidate,
   variables: Map<string, VariableInfo>,
   functionNode: ESTreeNode
 ): MutationInfo[] {
   const mutations: MutationInfo[] = [];
   const { startLine, endLine } = candidate;
 
-  walkInRange(functionNode, startLine, endLine, (n) => {
+  const visit = (n: ESTreeNode): void => {
     const checker = AST_MUTATION_CHECKERS[n.type];
     if (!checker) return;
     const mutation = checker(n, variables, startLine, endLine);
     if (mutation) mutations.push(mutation);
-  });
+  };
+  // A unit's nodes cover exactly its lines, so walk them instead of the whole function
+  if (candidate.unit) walkNodes(candidate.unit.nodes, visit);
+  else walkInRange(functionNode, startLine, endLine, visit);
 
   return mutations;
-}
-
-function collectReturnStatements(
-  node: ESTreeNode,
-  startLine: number,
-  endLine: number
-): ESTreeNode[] {
-  const returns: ESTreeNode[] = [];
-
-  walkInRange(node, startLine, endLine, (n) => {
-    if (
-      n.type === 'ReturnStatement' &&
-      n.loc &&
-      n.loc.start.line >= startLine &&
-      n.loc.start.line <= endLine
-    ) {
-      returns.push(n);
-    }
-  });
-
-  return returns;
-}
-
-function hasEarlyReturn(candidate: ExtractionCandidate, functionNode: ESTreeNode): boolean {
-  const returns = collectReturnStatements(functionNode, candidate.startLine, candidate.endLine);
-
-  if (returns.length === 0) return false;
-  if (returns.length > 1) return true;
-
-  // Single return: only flag if not near the end of the candidate.
-  // Allow 1 line of slack for the closing brace.
-  const returnLine = returns[0].loc?.start.line ?? 0;
-  return returnLine < candidate.endLine - 1;
-}
-
-function detectThisReferences(candidate: ExtractionCandidate, functionNode: ESTreeNode): boolean {
-  let found = false;
-  walkInRange(functionNode, candidate.startLine, candidate.endLine, (n) => {
-    if (n.type === 'ThisExpression') {
-      found = true;
-    }
-  });
-  return found;
 }
 
 function deduplicateMutations(mutations: MutationInfo[]): MutationInfo[] {
@@ -333,7 +248,7 @@ function deduplicateMutations(mutations: MutationInfo[]): MutationInfo[] {
 }
 
 export function analyzeVariableFlow(
-  candidate: ExtractionCandidate,
+  candidate: UnitCandidate,
   variables: Map<string, VariableInfo>,
   functionNode: ESTreeNode
 ): VariableFlowAnalysis {
@@ -365,6 +280,7 @@ export function analyzeVariableFlow(
   ]);
 
   const closures = detectClosures(candidate, variables);
+  const { earlyExits, asyncBoundaries } = analyzeControlFlow(candidate, functionNode);
 
   return {
     inputs,
@@ -372,7 +288,9 @@ export function analyzeVariableFlow(
     internalOnly,
     mutations,
     closures,
-    hasEarlyReturn: hasEarlyReturn(candidate, functionNode),
+    hasEarlyReturn: earlyExits.length > 0,
     hasThisReference: detectThisReferences(candidate, functionNode),
+    earlyExits,
+    asyncBoundaries,
   };
 }

@@ -127,22 +127,23 @@ Detects common complexity patterns and provides actionable tips:
 
 ### Extraction Suggestions
 
-Analyzes variable flow to identify extractable code blocks (enabled by default, disable with `enableExtraction: false`):
+Analyzes variable flow to identify extractable code blocks (enabled by default, disable with `enableExtraction: false`). Suggestions are whole statements or blocks (`if`/`else` chains, loops, `switch` cases, `try` blocks, declarations), never split mid-statement. Blocks containing a `return`, an escaping `break`/`continue`, or `await`/`yield` are marked "some refactoring" with a concrete fix in the issue and no suggested signature:
 
 **Example output:**
 
 ```
 Smart extraction suggestions:
 
-  Lines 9-22: Extractable with some refactoring
-    Complexity: +11 (55% of total)
-    Inputs: order, config, processedItems
-    Suggested: processOrder(order, config, processedItems): void
+  Lines 11-15: Extractable with some refactoring
+    Complexity: +8 (40% of total)
+    Inputs: config, item
+    Issue: Contains 'continue' targeting a loop outside the block; return a flag from the helper and `continue` at the call site (line 13)
 
   Lines 25-33: Requires significant refactoring
     Complexity: +6 (30% of total)
     Inputs: config, totalCount, processedItems
     Issue: Mutates external variable 'totalCount' (line 27)
+    Issue: Mutates external variable 'totalCount' (line 30)
     Suggestion: Consider returning 'totalCount' instead of mutating it
 ```
 
@@ -158,7 +159,9 @@ Suggested: processBlock(config: Config, results: number[]): void
 Extraction suggestions use static analysis heuristics and may miss:
 
 - **Globals/module variables** (not tracked by variable flow analysis)
-- **Complex flows** (closures, dynamic properties, indirect mutations)
+- **Complex flows** (closures, dynamic properties, indirect mutations, `var` shared across loop iterations)
+- **Enclosing variables**: inputs of a block in a nested function omit the enclosing function's variables, so such blocks get an issue and no signature
+- **Runs of sibling statements**, one-line blocks, class field initializers, arrow expression bodies, and flat functions with many small increments
 
 Always review suggestions before applying, even when marked "high confidence".
 

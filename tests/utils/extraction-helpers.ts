@@ -1,4 +1,5 @@
-import type { ESTreeNode, ComplexityResult } from '#src/types.js';
+import type { ESTreeNode, ComplexityResult, Context, VisitorWithHooks } from '#src/types.js';
+import { complexity } from '#src/rules/complexity.js';
 import type {
   VariableInfo,
   ExtractionCandidate,
@@ -91,4 +92,35 @@ export function buildCandidateForRange(
 export function analyzeFlowFromResult(result: ExtendedResult): VariableFlowAnalysis {
   const candidate = buildCandidateFromResult(result);
   return analyzeVariableFlow(candidate, result.variables, result.node);
+}
+
+/**
+ * Drive the `complexity/complexity` rule end to end (createOnce -> before -> visitor -> after)
+ * with a low threshold and return the reported messages. Uses `parseAndPrepareAst` and a
+ * scope-aware mock context, otherwise `getScope` is null and no suggestions are produced.
+ */
+export function lintWithExtraction(
+  code: string,
+  options: Record<string, unknown> = {},
+  filename = 'test.ts'
+): string[] {
+  const { program, errors } = parseAndPrepareAst(code, filename);
+  if (errors.length > 0) {
+    throw new Error(`Parse errors: ${errors.map((e) => e.message).join(', ')}`);
+  }
+
+  const messages: string[] = [];
+  const context = {
+    ...createMockContext(program),
+    options: [{ cognitive: 1, cyclomatic: 9999, minLines: 0, ...options }],
+    report: ({ message }: { message: string }) => {
+      messages.push(message);
+    },
+  } as Context;
+
+  const visitor = complexity.createOnce!(context) as VisitorWithHooks;
+  visitor.before?.();
+  walkWithVisitor(program, visitor, code);
+  visitor.after?.();
+  return messages;
 }

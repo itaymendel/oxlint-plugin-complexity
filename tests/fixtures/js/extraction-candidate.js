@@ -1,11 +1,11 @@
-// @complexity processOrder:cyclomatic=11,cognitive=20
+// @complexity processOrder:cyclomatic=11,cognitive=20 describeOrder:cyclomatic=5,cognitive=6
 // A complex function that has clear extraction opportunities
 function processOrder(order, config) {
   let totalCount = 0;
   let processedItems = [];
 
-  // Block 1: Extractable - validate and transform items (lines 9-20)
-  // Inputs: order, config | Outputs: processedItems
+  // Block 1: Needs refactoring - the validation guard (lines 11-15) contains `continue`,
+  // which targets the loop outside the block (medium confidence, no signature)
   for (const item of order.items) {  // +1
     if (item.active) {  // +2 (nesting=1)
       if (config.validate) {  // +3 (nesting=2)
@@ -21,7 +21,7 @@ function processOrder(order, config) {
     }
   }
 
-  // Block 2: Requires refactoring - mutates external totalCount (lines 24-32)
+  // Block 2: Requires refactoring - mutates external totalCount (lines 25-33)
   for (const processed of processedItems) {  // +1
     if (processed.price > 100) {  // +2 (nesting=1)
       totalCount++;  // Mutation!
@@ -32,7 +32,7 @@ function processOrder(order, config) {
     }
   }
 
-  // Block 3: Simple extractable block (lines 35-40)
+  // Block 3: Simple block (lines 36-40), below the extraction threshold
   if (config.logging) {  // +1
     for (const item of processedItems) {  // +2 (nesting=1)
       console.log(item);
@@ -40,4 +40,23 @@ function processOrder(order, config) {
   }
 
   return { items: processedItems, count: totalCount };
+}
+
+// Two pure computations, each with a clean signature (high confidence)
+function describeOrder(order, config) {
+  // Block 1: Inputs: order | Outputs: label
+  const label = order.express
+    ? order.vip
+      ? 'priority'
+      : 'express'
+    : 'standard';
+
+  // Block 2: Inputs: order, config | Outputs: fee
+  const fee = order.express
+    ? order.vip
+      ? config.vipFee
+      : config.expressFee
+    : config.baseFee;
+
+  return label + ':' + fee;
 }
