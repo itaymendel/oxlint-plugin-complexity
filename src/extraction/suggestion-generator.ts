@@ -227,7 +227,7 @@ function generateSuggestions(issues: ExtractionIssue[]): string[] {
         break;
       case 'this-reference':
         suggestions.push(
-          'Block references `this` — extracted function will need `.call(this)` or accept the instance as a parameter'
+          "A plain helper does not get the caller's `this`, `arguments`, `super` or `new.target`: pass `this` or the needed values as parameters, and keep `super` and `new.target` code in the original function"
         );
         break;
     }

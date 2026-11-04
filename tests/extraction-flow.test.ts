@@ -293,7 +293,9 @@ describe('Smart Extraction Detection', () => {
       expect(thisIssue).toBeDefined();
       expect(thisIssue!.description).toContain('this');
 
-      const thisSuggestion = suggestion.suggestions.find((s) => s.includes('.call(this)'));
+      const thisSuggestion = suggestion.suggestions.find((s) =>
+        s.includes('pass `this` or the needed values as parameters')
+      );
       expect(thisSuggestion).toBeDefined();
     });
   });
