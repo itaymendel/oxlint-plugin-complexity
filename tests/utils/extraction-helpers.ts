@@ -9,13 +9,14 @@ import {
   createCognitiveVisitorWithTracking,
   type ComplexityResultWithVariables,
 } from '#src/cognitive/visitor.js';
+import type { Variable } from '@oxlint/plugins';
 import { analyzeVariableFlow } from '#src/extraction/flow-analyzer.js';
 import { extractConstructFromMessage } from '#src/utils.js';
 import { createMockContext, walkWithVisitor, parseAndPrepareAst } from './test-helpers.js';
 
 export interface ExtendedResult extends ComplexityResult {
   functionName: string;
-  variables: Map<string, VariableInfo>;
+  variables: Map<Variable, VariableInfo>;
   node: ESTreeNode;
 }
 

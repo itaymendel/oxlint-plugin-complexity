@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Print an extraction signature only when no hazard is found in applying it; otherwise list the hazard as an issue (#183).
+
 ## [4.1.1] - 2026-11-24
 
 ### Changed

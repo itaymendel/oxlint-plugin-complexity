@@ -1,71 +1,14 @@
 import type { Context, ESTreeNode } from '../types.js';
 import type { VariableInfo, VariableReference, ReferenceType } from './types.js';
 import type { Scope, Variable, Reference } from '@oxlint/plugins';
+import { printDeclaredType } from './type-text.js';
+import { writeThroughWrapper } from './ast-utils.js';
 
 interface IdentifierNode {
   type: string;
   name?: string;
-  typeAnnotation?: ESTreeNode;
   loc?: ESTreeNode['loc'];
   parent?: ESTreeNode;
-}
-
-/**
- * Extract TypeScript type annotation string from an identifier node.
- */
-function getTypeAnnotation(node: ESTreeNode): string | undefined {
-  const typed = node as IdentifierNode;
-  if (!typed.typeAnnotation) return undefined;
-
-  const typeNode = typed.typeAnnotation as ESTreeNode & { typeAnnotation?: ESTreeNode };
-  const actualType = typeNode.typeAnnotation ?? typeNode;
-
-  if (actualType.type === 'TSTypeAnnotation' && actualType.typeAnnotation) {
-    return getTypeString(actualType.typeAnnotation);
-  }
-
-  return getTypeString(actualType);
-}
-
-/**
- * Convert a TypeScript type node to a human-readable string.
- */
-// eslint-disable-next-line complexity/complexity -- type mapping switch
-function getTypeString(node: ESTreeNode): string {
-  switch (node.type) {
-    case 'TSStringKeyword':
-      return 'string';
-    case 'TSNumberKeyword':
-      return 'number';
-    case 'TSBooleanKeyword':
-      return 'boolean';
-    case 'TSAnyKeyword':
-      return 'any';
-    case 'TSVoidKeyword':
-      return 'void';
-    case 'TSNullKeyword':
-      return 'null';
-    case 'TSUndefinedKeyword':
-      return 'undefined';
-    case 'TSArrayType': {
-      const arrayType = node as ESTreeNode & { elementType: ESTreeNode };
-      return `${getTypeString(arrayType.elementType)}[]`;
-    }
-    case 'TSTypeReference': {
-      const typeRef = node as ESTreeNode & { typeName: IdentifierNode };
-      return typeRef.typeName?.name ?? 'unknown';
-    }
-    case 'TSUnionType': {
-      const unionType = node as ESTreeNode & { types: ESTreeNode[] };
-      return unionType.types.map(getTypeString).join(' | ');
-    }
-    case 'TSIntersectionType': {
-      const intersectionType = node as ESTreeNode & { types: ESTreeNode[] };
-      return intersectionType.types.map(getTypeString).join(' & ');
-    }
-    default:
-      return 'unknown';
-  }
 }
 
 const DESTRUCTURING_PATTERN_TYPES = new Set(['ObjectPattern', 'ArrayPattern']);
@@ -117,6 +60,9 @@ function mapDefinitionType(
  * Convert an oxlint Reference to our reference type.
  */
 function getReferenceType(ref: Reference): ReferenceType | null {
+  // `(x satisfies T) = 1` is reported as a read by the scope manager, but it writes x
+  const through = writeThroughWrapper(ref.identifier as unknown as ESTreeNode);
+  if (through) return through;
   if (ref.isReadWrite()) return 'readwrite';
   if (ref.isWrite()) return 'write';
   if (ref.isRead()) return 'read';
@@ -135,6 +81,9 @@ function calculateScopeLevel(scope: Scope, functionScope: Scope): number {
   }
   return level;
 }
+
+/** Scope types that only exist in the type system; oxlint reports `functionType` at runtime. */
+const TYPE_ONLY_SCOPE_TYPES = new Set<string>(['functionType']);
 
 const NESTED_FUNCTION_SCOPE_TYPES = new Set([
   'function',
@@ -161,7 +110,7 @@ function isNestedFunctionScope(scope: Scope, functionScope: Scope): boolean {
 /**
  * Convert oxlint references to our VariableReference format.
  */
-function convertReferences(variable: Variable, functionScope: Scope): VariableReference[] {
+function convertReferences(variable: Variable): VariableReference[] {
   const references: VariableReference[] = [];
 
   for (const ref of variable.references) {
@@ -174,7 +123,6 @@ function convertReferences(variable: Variable, functionScope: Scope): VariableRe
       column: identifier.loc?.start.column ?? 0,
       type: refType,
       node: ref.identifier as unknown as ESTreeNode,
-      inNestedFunction: isNestedFunctionScope(ref.from, functionScope),
     });
   }
 
@@ -188,25 +136,28 @@ function processVariable(
   variable: Variable,
   scope: Scope,
   functionScope: Scope,
-  collected: Map<string, VariableInfo>
+  collected: Map<Variable, VariableInfo>,
+  source: string
 ): void {
-  if (collected.has(variable.name)) return;
+  if (collected.has(variable)) return;
 
   const def = variable.defs[0];
   if (!def) return;
+  // Type-only bindings (`type`, `interface`, type parameters) are not values
+  if (variable.defs.every((d) => (d.type as string) === 'Type')) return;
 
   const identifier = variable.identifiers[0] as IdentifierNode | undefined;
   const defNode = def.node as ESTreeNode;
   const declarationType = mapDefinitionType(def, variable);
 
-  collected.set(variable.name, {
+  collected.set(variable, {
     name: variable.name,
     declarationLine: defNode.loc?.start.line ?? 0,
     declarationColumn: defNode.loc?.start.column ?? 0,
     declarationType,
     isMutable: declarationType !== 'const',
-    typeAnnotation: identifier ? getTypeAnnotation(identifier as ESTreeNode) : undefined,
-    references: convertReferences(variable, functionScope),
+    typeAnnotation: identifier ? printDeclaredType(source, identifier as ESTreeNode) : undefined,
+    references: convertReferences(variable),
     scopeLevel: calculateScopeLevel(scope, functionScope),
   });
 }
@@ -217,18 +168,23 @@ function processVariable(
 function collectScopeVariables(
   scope: Scope,
   functionScope: Scope,
-  collected: Map<string, VariableInfo>
+  collected: Map<Variable, VariableInfo>,
+  source: string
 ): void {
   if (isNestedFunctionScope(scope, functionScope)) {
     return;
   }
 
-  for (const variable of scope.variables) {
-    processVariable(variable, scope, functionScope, collected);
+  // Parameter names inside a function *type* (`(a: number) => void`) are not bindings of the
+  // enclosing function: nothing can read, write or capture them.
+  if (!TYPE_ONLY_SCOPE_TYPES.has(scope.type)) {
+    for (const variable of scope.variables) {
+      processVariable(variable, scope, functionScope, collected, source);
+    }
   }
 
   for (const childScope of scope.childScopes) {
-    collectScopeVariables(childScope, functionScope, collected);
+    collectScopeVariables(childScope, functionScope, collected, source);
   }
 }
 
@@ -237,19 +193,22 @@ function collectScopeVariables(
  *
  * This collects variables from the function scope and all nested block scopes,
  * but excludes variables from nested function scopes.
+ *
+ * Keyed by scope-manager `Variable` identity, never by name: same-named siblings, shadowed
+ * parameters and function-type parameter names are different bindings.
  */
 export function getVariablesForFunction(
   context: Context,
   functionNode: ESTreeNode
-): Map<string, VariableInfo> {
-  const variables = new Map<string, VariableInfo>();
+): Map<Variable, VariableInfo> {
+  const variables = new Map<Variable, VariableInfo>();
 
   const functionScope = context.sourceCode.getScope(functionNode);
   if (!functionScope) {
     return variables;
   }
 
-  collectScopeVariables(functionScope, functionScope, variables);
+  collectScopeVariables(functionScope, functionScope, variables, context.sourceCode.text ?? '');
 
   return variables;
 }

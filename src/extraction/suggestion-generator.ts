@@ -10,21 +10,23 @@ import type {
 } from './types.js';
 
 const MAX_HIGH_CONFIDENCE_INPUTS = 3;
-export const PLACEHOLDER_FUNCTION_NAME = 'extracted';
+const PLACEHOLDER_FUNCTION_NAME = 'extracted';
 const MAX_HIGH_CONFIDENCE_OUTPUTS = 1;
 const MAX_MEDIUM_CONFIDENCE_INPUTS = 5;
 const MAX_MEDIUM_CONFIDENCE_OUTPUTS = 2;
 
 /** Structural hazards that make the signature unsafe to apply as-is, though data flow is clean. */
 function hasStructuralHazard(flow: VariableFlowAnalysis): boolean {
-  return flow.hasEarlyReturn || flow.hasThisReference || !!flow.asyncBoundaries?.length;
+  return (
+    flow.hasEarlyReturn || flow.hasThisReference || !!flow.asyncBoundaries?.length || !!flow.hazard
+  );
 }
 
 function determineConfidence(flow: VariableFlowAnalysis): ExtractionConfidence {
   const inputCount = flow.inputs.length;
   const outputCount = flow.outputs.length;
   const hasMutations = flow.mutations.length > 0;
-  const hasClosures = flow.closures.length > 0;
+  const hasClosures = flow.hazard?.type === 'closure';
 
   // Low confidence conditions
   if (
@@ -48,24 +50,28 @@ function determineConfidence(flow: VariableFlowAnalysis): ExtractionConfidence {
   return 'high';
 }
 
+/** How a variable is written in a parameter list, a result type and the Inputs/Outputs lines. */
+export function printVariable(variable: TypedVariable): string {
+  return variable.type ? `${variable.name}: ${variable.type}` : variable.name;
+}
+
+/**
+ * The result type, only where it can be written without guessing: `void` for no outputs, the
+ * declared types otherwise. If any output has no declared type the return type is left out.
+ */
+function printReturnType(outputs: TypedVariable[]): string {
+  if (outputs.length === 0) return ': void';
+  if (outputs.some((output) => !output.type)) return '';
+  if (outputs.length === 1) return `: ${outputs[0].type}`;
+  return `: { ${outputs.map(printVariable).join(', ')} }`;
+}
+
 function generateSignature(
   functionName: string,
   inputs: TypedVariable[],
   outputs: TypedVariable[]
 ): string {
-  const params = inputs.map((v) => (v.type ? `${v.name}: ${v.type}` : v.name)).join(', ');
-
-  let returnType: string;
-  if (outputs.length === 0) {
-    returnType = 'void';
-  } else if (outputs.length === 1) {
-    returnType = outputs[0].type || 'unknown';
-  } else {
-    const properties = outputs.map((v) => (v.type ? `${v.name}: ${v.type}` : v.name)).join(', ');
-    returnType = `{ ${properties} }`;
-  }
-
-  return `${functionName}(${params}): ${returnType}`;
+  return `${functionName}(${inputs.map(printVariable).join(', ')})${printReturnType(outputs)}`;
 }
 
 /** `noun` or `N nouns` — the formatter appends the line of the first occurrence. */
@@ -172,14 +178,7 @@ function detectIssues(flow: VariableFlowAnalysis): ExtractionIssue[] {
     });
   }
 
-  for (const closure of flow.closures) {
-    issues.push({
-      type: 'closure',
-      description: `Closure captures mutable variable '${closure.variable.name}'`,
-      line: closure.closureStartLine,
-      variable: closure.variable.name,
-    });
-  }
+  if (flow.hazard) issues.push(flow.hazard);
 
   if (flow.inputs.length > MAX_MEDIUM_CONFIDENCE_INPUTS) {
     issues.push({
@@ -215,9 +214,6 @@ function generateSuggestions(issues: ExtractionIssue[]): string[] {
     switch (issue.type) {
       case 'mutation':
         suggestions.push(`Consider returning '${issue.variable}' instead of mutating it`);
-        break;
-      case 'closure':
-        suggestions.push(`Pass '${issue.variable}' as a parameter instead of closing over it`);
         break;
       case 'too-many-params':
         suggestions.push('Consider grouping related parameters into an options object');
@@ -265,8 +261,10 @@ export function createExtractionSuggestion(
   const outputs = flow.outputs.map(toTypedVariable);
 
   let suggestedSignature: string | undefined;
+  let typeNotes: string[] | undefined;
   if (issues.length === 0) {
     suggestedSignature = generateSignature(PLACEHOLDER_FUNCTION_NAME, inputs, outputs);
+    typeNotes = flow.typeNotes;
   }
 
   return {
@@ -280,6 +278,7 @@ export function createExtractionSuggestion(
     inputs,
     outputs,
     suggestedSignature,
+    ...(typeNotes ? { typeNotes } : {}),
     issues,
     suggestions: actionSuggestions,
   };
@@ -290,6 +289,7 @@ export function markNested(suggestion: ExtractionSuggestion): ExtractionSuggesti
   return {
     ...suggestion,
     suggestedSignature: undefined,
+    typeNotes: undefined,
     issues: [...suggestion.issues, NESTED_FUNCTION_ISSUE],
     confidence: suggestion.confidence === 'high' ? 'medium' : suggestion.confidence,
   };
@@ -298,7 +298,7 @@ export function markNested(suggestion: ExtractionSuggestion): ExtractionSuggesti
 export function getConfidenceLabel(confidence: ExtractionConfidence): string {
   switch (confidence) {
     case 'high':
-      return 'Extractable with minimal changes';
+      return 'No extraction hazards found';
     case 'medium':
       return 'Extractable with some refactoring';
     case 'low':

@@ -6,11 +6,25 @@ import {
   shouldAnalyzeExtraction,
   formatExtractionSuggestions,
 } from '#src/extraction/index.js';
+import type { VariableInfo } from '#src/extraction/types.js';
 import { loadFixture } from './utils/fixture-loader.js';
 import { type ExtendedResult, calculateCognitiveWithTracking } from './utils/extraction-helpers.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(__dirname, 'fixtures');
+
+/**
+ * Variables are keyed by scope-manager binding, not name. Find the binding declared with this
+ * name; the code under test must declare it exactly once, so the lookup cannot pick wrongly.
+ */
+function bindingNamed(
+  variables: ExtendedResult['variables'],
+  name: string
+): VariableInfo | undefined {
+  const matches = [...variables.entries()].filter(([binding]) => binding.name === name);
+  expect(matches, `bindings named ${name}`).toSatisfy((m: unknown[]) => m.length <= 1);
+  return matches[0]?.[1];
+}
 
 describe('Smart Extraction Detection', () => {
   describe('shouldAnalyzeExtraction', () => {
@@ -48,20 +62,41 @@ describe('Smart Extraction Detection', () => {
       const results = calculateCognitiveWithTracking(code, 'test.js');
       const result = results.get('test')!;
 
-      expect(result.variables.has('param')).toBe(true);
-      expect(result.variables.has('a')).toBe(true);
-      expect(result.variables.has('b')).toBe(true);
+      expect(bindingNamed(result.variables, 'param')).toBeDefined();
+      expect(bindingNamed(result.variables, 'a')).toBeDefined();
+      expect(bindingNamed(result.variables, 'b')).toBeDefined();
 
-      const paramInfo = result.variables.get('param')!;
+      const paramInfo = bindingNamed(result.variables, 'param')!;
       expect(paramInfo.declarationType).toBe('param');
 
-      const aInfo = result.variables.get('a')!;
+      const aInfo = bindingNamed(result.variables, 'a')!;
       expect(aInfo.declarationType).toBe('const');
       expect(aInfo.isMutable).toBe(false);
 
-      const bInfo = result.variables.get('b')!;
+      const bInfo = bindingNamed(result.variables, 'b')!;
       expect(bInfo.declarationType).toBe('let');
       expect(bInfo.isMutable).toBe(true);
+    });
+
+    it('keeps same-named siblings and shadowed parameters as separate bindings', () => {
+      const code = `
+        function test(p: (a: number, z: string) => void, a: number) {
+          { const x = 1; use(x); }
+          { const x = 2; o.k = x; }
+          for (const a of []) use(a);
+        }
+      `;
+      const result = calculateCognitiveWithTracking(code, 'test.ts').get('test')!;
+      const named = (name: string) =>
+        [...result.variables.keys()].filter((binding) => binding.name === name);
+      expect(named('x')).toHaveLength(2);
+      expect(named('a')).toHaveLength(2); // parameter and loop variable, not the function type's
+      expect(named('z')).toHaveLength(0); // function-type parameter names are not bindings
+      const [first, second] = named('x').map((binding) => result.variables.get(binding)!);
+      expect(first.declarationLine).not.toBe(second.declarationLine);
+      expect(first.references.some((r) => r.type === 'read')).toBe(true);
+      expect(second.references.some((r) => r.type === 'read')).toBe(true);
+      expect(first.references.every((r) => r.line !== second.declarationLine)).toBe(true);
     });
 
     it('tracks TypeScript type annotations', () => {
@@ -75,7 +110,7 @@ describe('Smart Extraction Detection', () => {
       const results = calculateCognitiveWithTracking(code, 'test.ts');
       const result = results.get('test')!;
 
-      const resultInfo = result.variables.get('result');
+      const resultInfo = bindingNamed(result.variables, 'result');
       expect(resultInfo?.typeAnnotation).toBe('number');
     });
   });
@@ -172,8 +207,8 @@ describe('Smart Extraction Detection', () => {
 
       expect(suggestions.map((s) => s.confidence)).toEqual(['high', 'high']);
       expect(suggestions.map((s) => s.suggestedSignature)).toEqual([
-        'extracted(order): unknown',
-        'extracted(order, config): unknown',
+        'extracted(order)',
+        'extracted(order, config)',
       ]);
     });
 
@@ -275,8 +310,8 @@ describe('Smart Extraction Detection', () => {
       const result = results.get('test')!;
 
       expect(result.variables.size).toBeGreaterThan(0);
-      expect(result.variables.has('x')).toBe(true);
-      expect(result.variables.has('y')).toBe(true);
+      expect(bindingNamed(result.variables, 'x')).toBeDefined();
+      expect(bindingNamed(result.variables, 'y')).toBeDefined();
     });
 
     it('identifies variables read within a potential extraction range', () => {
@@ -296,8 +331,8 @@ describe('Smart Extraction Detection', () => {
       const result = results.get('processData')!;
 
       // Verify that items and config are tracked as read
-      const itemsVar = result.variables.get('items');
-      const configVar = result.variables.get('config');
+      const itemsVar = bindingNamed(result.variables, 'items');
+      const configVar = bindingNamed(result.variables, 'config');
 
       expect(itemsVar).toBeDefined();
       expect(configVar).toBeDefined();

@@ -3,6 +3,7 @@ import { getFunctionName, isFunctionNode } from '../utils.js';
 import { createComplexityVisitor } from '../visitor.js';
 import { getVariablesForFunction } from '../extraction/variable-tracker.js';
 import type { VariableInfo } from '../extraction/types.js';
+import type { Variable } from '@oxlint/plugins';
 import {
   createCognitiveHandlers,
   createCognitiveScope,
@@ -79,7 +80,7 @@ export function createCognitiveVisitor(
 }
 
 export interface ComplexityResultWithVariables extends ComplexityResult {
-  variables: Map<string, VariableInfo>;
+  variables: Map<Variable, VariableInfo>;
   functionName: string;
 }
 

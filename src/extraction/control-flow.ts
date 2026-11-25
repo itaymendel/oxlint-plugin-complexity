@@ -7,7 +7,7 @@ import {
   getLine,
   getNodeProp,
   isScopeBoundary,
-  walkChildren,
+  walkLexicalChildren,
   walkInRange,
   walkNodes,
 } from './ast-utils.js';
@@ -93,7 +93,7 @@ function collect(n: ESTreeNode, scope: JumpScope, out: Collected): void {
   if (isScopeBoundary(n, false)) return;
   NODE_RECORDERS[n.type]?.(n, scope, out);
   const inner = enterScope(n, scope);
-  walkChildren(n, (child) => collect(child, inner, out));
+  walkLexicalChildren(n, (child) => collect(child, inner, out));
 }
 
 function ifAbrupt(n: ESTree.IfStatement): boolean {
@@ -175,9 +175,21 @@ function isArgumentsReference(n: ESTreeNode): boolean {
   return !(parent?.type === 'Property' && !parent.computed && parent.key === n);
 }
 
+/** `<this.Row />`: the root of a JSX member tag is `this`, though it is not a ThisExpression. */
+function isJsxThis(n: ESTreeNode): boolean {
+  const parent = n.parent as ESTreeNode | undefined;
+  return (
+    n.type === 'JSXIdentifier' &&
+    n.name === 'this' &&
+    parent?.type === 'JSXMemberExpression' &&
+    parent.object === n
+  );
+}
+
 function isThisLike(n: ESTreeNode): boolean {
   return (
     n.type === 'ThisExpression' ||
+    isJsxThis(n) ||
     n.type === 'Super' ||
     (n.type === 'MetaProperty' && n.meta.name === 'new') ||
     isArgumentsReference(n)
