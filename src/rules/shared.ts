@@ -87,13 +87,10 @@ export function getExtractionOutput(
   if (!parsed.enableExtraction) return '';
   if (!shouldAnalyzeExtraction(total, maxComplexity, parsed.extractionOptions)) return '';
 
-  const variables = getVariablesForFunction(context, node);
-  const suggestions = analyzeExtractionOpportunities(
-    node,
-    points,
-    total,
-    variables,
-    parsed.extractionOptions
-  );
+  const variables = () => getVariablesForFunction(context, node);
+  const suggestions = analyzeExtractionOpportunities(node, points, total, variables, {
+    ...parsed.extractionOptions,
+    filename: context.filename,
+  });
   return formatExtractionSuggestions(suggestions);
 }

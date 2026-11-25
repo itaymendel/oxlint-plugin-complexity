@@ -67,11 +67,14 @@ function prepareAstForAnalysis(ast: ESTreeNode, code: string): void {
  */
 export function createMockContext(ast?: ESTreeNode): Context {
   const scopeManager: ScopeManager | null = ast ? analyzeScope(ast) : null;
+  // The source text, when the AST came from parseAndPrepareAst (oxlint's sourceCode.text)
+  const text = (ast as unknown as { sourceText?: string } | undefined)?.sourceText ?? '';
 
   return {
     sourceCode: {
-      text: '',
-      getText: () => '',
+      text,
+      getText: (node?: { start: number; end: number }) =>
+        node ? text.slice(node.start, node.end) : text,
       scopeManager,
       getScope: (node: ESTreeNode) => scopeManager?.acquire(node) ?? null,
     },
@@ -115,6 +118,7 @@ export function parseAndPrepareAst(
 
   if (errors.length === 0) {
     prepareAstForAnalysis(program as unknown as ESTreeNode, code);
+    Object.defineProperty(program, 'sourceText', { value: code, enumerable: false });
   }
 
   return {

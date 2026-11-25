@@ -1,5 +1,6 @@
 import type { ESTreeNode } from '../types.js';
-import type { VariableInfo, VariableFlowAnalysis, MutationInfo, ClosureInfo } from './types.js';
+import type { VariableInfo, VariableFlowAnalysis, MutationInfo } from './types.js';
+import { checkExtractionSafety, collectFunctionFacts } from './safety.js';
 import type { UnitCandidate } from './unit-finder.js';
 import { getLine, getNodeProp, isNodeLike, walkInRange, walkNodes } from './ast-utils.js';
 import { analyzeControlFlow, detectThisReferences } from './control-flow.js';
@@ -38,7 +39,7 @@ function isDeclaredInRange(variable: VariableInfo, startLine: number, endLine: n
 
 function detectDirectMutations(
   candidate: UnitCandidate,
-  variables: Map<string, VariableInfo>
+  variables: ReadonlyMap<unknown, VariableInfo>
 ): MutationInfo[] {
   const mutations: MutationInfo[] = [];
 
@@ -58,89 +59,48 @@ function detectDirectMutations(
   return mutations;
 }
 
-function isClosureNode(node: ESTreeNode): boolean {
-  return node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression';
-}
+/**
+ * Maps each resolved identifier reference node to the binding it refers to, so a mutation root
+ * is resolved through the scope manager's references rather than by name.
+ */
+type ReferenceIndex = ReadonlyMap<ESTreeNode, VariableInfo>;
 
-function findEnclosingClosure(
-  startNode: ESTreeNode | null | undefined,
-  candidate: UnitCandidate
-): { startLine: number; endLine: number } | null {
-  let current: ESTreeNode | null | undefined = startNode;
-  // Ancestors only start earlier, so once one starts before the candidate none can qualify
-  while (current && getLine(current) >= candidate.startLine) {
-    if (isClosureNode(current)) {
-      const funcLine = current.loc?.start.line ?? 0;
-      const funcEndLine = current.loc?.end.line ?? 0;
-      if (funcLine >= candidate.startLine && funcEndLine <= candidate.endLine) {
-        return { startLine: funcLine, endLine: funcEndLine };
-      }
-    }
-    current = current.parent;
-  }
-  return null;
-}
-
-function detectClosures(
-  candidate: UnitCandidate,
-  variables: Map<string, VariableInfo>
-): ClosureInfo[] {
-  const closures: ClosureInfo[] = [];
-
+function buildReferenceIndex(variables: ReadonlyMap<unknown, VariableInfo>): ReferenceIndex {
+  const index = new Map<ESTreeNode, VariableInfo>();
   for (const variable of variables.values()) {
-    if (!variable.isMutable || variable.declarationLine >= candidate.startLine) continue;
-
-    for (const ref of variable.references) {
-      // Reads/writes inside callbacks are already handled as inputs, outputs and mutations
-      const outsideRange = ref.line < candidate.startLine || ref.line > candidate.endLine;
-      if (ref.inNestedFunction || outsideRange) continue;
-
-      const closure = findEnclosingClosure(ref.node.parent, candidate);
-      if (closure) {
-        closures.push({
-          variable,
-          closureStartLine: closure.startLine,
-          closureEndLine: closure.endLine,
-          issue: `Captures mutable variable '${variable.name}'`,
-        });
-        break; // One closure entry per variable is sufficient
-      }
-    }
+    for (const ref of variable.references) index.set(ref.node, variable);
   }
-
-  return closures;
+  return index;
 }
 
 /**
  * Walk a MemberExpression chain (e.g. `a.b.c.d`) to its root Identifier.
  * Returns null for non-Identifier roots (e.g. `getObj().prop`).
  */
-function resolveRootIdentifier(node: ESTreeNode): string | null {
+function resolveRootIdentifier(node: ESTreeNode): ESTreeNode | null {
   let current: ESTreeNode = node;
   while (current.type === 'MemberExpression') {
     const obj = getNodeProp(current, 'object');
     if (!isNodeLike(obj)) return null;
     current = obj;
   }
-  if (current.type === 'Identifier') {
-    return getNodeProp(current, 'name') as string;
-  }
-  return null;
+  return current.type === 'Identifier' ? current : null;
 }
 
 /**
- * Resolve a MemberExpression root to a variable declared outside the candidate range.
- * Returns null if the root is not an identifier, unknown, or declared within range.
+ * Resolve a MemberExpression root to the binding its identifier references, if that binding is
+ * declared outside the candidate range. Returns null if the root is not an identifier, does not
+ * resolve to a tracked binding, or is declared within range.
  */
 function findExternalVariable(
   memberExpr: ESTreeNode,
-  variables: Map<string, VariableInfo>,
+  references: ReferenceIndex,
   startLine: number,
   endLine: number
 ): VariableInfo | null {
-  const rootName = resolveRootIdentifier(memberExpr);
-  if (!rootName) return null;
-  const variable = variables.get(rootName);
+  const root = resolveRootIdentifier(memberExpr);
+  if (!root) return null;
+  const variable = references.get(root);
   if (!variable || isDeclaredInRange(variable, startLine, endLine)) return null;
   return variable;
 }
@@ -165,7 +125,7 @@ const MUTATING_METHODS = new Set([
 
 function checkPropertyAssignment(
   n: ESTreeNode,
-  variables: Map<string, VariableInfo>,
+  variables: ReferenceIndex,
   startLine: number,
   endLine: number
 ): MutationInfo | null {
@@ -178,7 +138,7 @@ function checkPropertyAssignment(
 
 function checkPropertyUpdate(
   n: ESTreeNode,
-  variables: Map<string, VariableInfo>,
+  variables: ReferenceIndex,
   startLine: number,
   endLine: number
 ): MutationInfo | null {
@@ -191,7 +151,7 @@ function checkPropertyUpdate(
 
 function checkMethodCallMutation(
   n: ESTreeNode,
-  variables: Map<string, VariableInfo>,
+  variables: ReferenceIndex,
   startLine: number,
   endLine: number
 ): MutationInfo | null {
@@ -218,16 +178,17 @@ const AST_MUTATION_CHECKERS: Record<string, typeof checkPropertyAssignment> = {
  */
 function detectAstMutations(
   candidate: UnitCandidate,
-  variables: Map<string, VariableInfo>,
+  variables: ReadonlyMap<unknown, VariableInfo>,
   functionNode: ESTreeNode
 ): MutationInfo[] {
   const mutations: MutationInfo[] = [];
   const { startLine, endLine } = candidate;
+  const references = buildReferenceIndex(variables);
 
   const visit = (n: ESTreeNode): void => {
     const checker = AST_MUTATION_CHECKERS[n.type];
     if (!checker) return;
-    const mutation = checker(n, variables, startLine, endLine);
+    const mutation = checker(n, references, startLine, endLine);
     if (mutation) mutations.push(mutation);
   };
   // A unit's nodes cover exactly its lines, so walk them instead of the whole function
@@ -238,19 +199,21 @@ function detectAstMutations(
 }
 
 function deduplicateMutations(mutations: MutationInfo[]): MutationInfo[] {
-  const seen = new Set<string>();
+  const seen = new Map<VariableInfo, Set<number>>();
   return mutations.filter((m) => {
-    const key = `${m.variable.name}:${m.mutationLine}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
+    const lines = seen.get(m.variable) ?? new Set<number>();
+    seen.set(m.variable, lines);
+    if (lines.has(m.mutationLine)) return false;
+    lines.add(m.mutationLine);
     return true;
   });
 }
 
 export function analyzeVariableFlow(
   candidate: UnitCandidate,
-  variables: Map<string, VariableInfo>,
-  functionNode: ESTreeNode
+  variables: ReadonlyMap<unknown, VariableInfo>,
+  functionNode: ESTreeNode,
+  facts = collectFunctionFacts(variables, functionNode)
 ): VariableFlowAnalysis {
   const inputs: VariableInfo[] = [];
   const outputs: VariableInfo[] = [];
@@ -279,7 +242,6 @@ export function analyzeVariableFlow(
     ...detectAstMutations(candidate, variables, functionNode),
   ]);
 
-  const closures = detectClosures(candidate, variables);
   const { earlyExits, asyncBoundaries } = analyzeControlFlow(candidate, functionNode);
 
   return {
@@ -287,7 +249,7 @@ export function analyzeVariableFlow(
     outputs,
     internalOnly,
     mutations,
-    closures,
+    ...checkExtractionSafety(candidate, { inputs, outputs }, facts),
     hasEarlyReturn: earlyExits.length > 0,
     hasThisReference: detectThisReferences(candidate, functionNode),
     earlyExits,

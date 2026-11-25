@@ -19,8 +19,6 @@ export interface VariableReference {
   column: number;
   type: ReferenceType;
   node: ESTreeNode;
-  /** True when the reference sits inside a function nested in the analyzed function */
-  inNestedFunction?: boolean;
 }
 
 export interface ExtractionCandidate {
@@ -37,7 +35,10 @@ export interface VariableFlowAnalysis {
   outputs: VariableInfo[];
   internalOnly: VariableInfo[];
   mutations: MutationInfo[];
-  closures: ClosureInfo[];
+  /** Set when the safety checks found a hazard; a signature is only printed without one */
+  hazard?: ExtractionIssue;
+  /** `Check types:` lines to print after a signature */
+  typeNotes?: string[];
   /** True for any function-level `return` or escaping `break`/`continue`, even a replaceable one */
   hasEarlyReturn: boolean;
   /** True for `this`, `arguments`, `super` or `new.target` (also inside nested arrow functions) */
@@ -68,13 +69,6 @@ export interface MutationInfo {
   mutationType: 'assignment' | 'increment' | 'method-call';
 }
 
-export interface ClosureInfo {
-  variable: VariableInfo;
-  closureStartLine: number;
-  closureEndLine: number;
-  issue: string;
-}
-
 export interface ExtractionIssue {
   type:
     | 'mutation'
@@ -82,7 +76,8 @@ export interface ExtractionIssue {
     | 'early-return'
     | 'too-many-params'
     | 'multiple-outputs'
-    | 'this-reference';
+    | 'this-reference'
+    | 'unsafe-extraction';
   description: string;
   line?: number;
   variable?: string;
@@ -96,10 +91,10 @@ export interface TypedVariable {
 /**
  * Confidence level for an extraction suggestion.
  *
- * - `high`: 0-3 inputs, 0-1 outputs, no mutations, no closures
+ * - `high`: 0-3 inputs, 0-1 outputs, no mutations, no hazard
  * - `medium`: 4-5 inputs OR 2 outputs OR early exits (`return`, escaping `break`/`continue`),
  *   `await`/`yield`, or `this`/`arguments`/`super`/`new.target`
- * - `low`: 6+ inputs OR 3+ outputs OR mutations OR closures
+ * - `low`: 6+ inputs OR 3+ outputs OR mutations OR a closure hazard
  */
 export type ExtractionConfidence = 'high' | 'medium' | 'low';
 
@@ -114,11 +109,15 @@ export interface ExtractionSuggestion {
   inputs: TypedVariable[];
   outputs: TypedVariable[];
   suggestedSignature?: string;
+  /** Lines to print after the signature, naming types to check; only set with a signature */
+  typeNotes?: string[];
   issues: ExtractionIssue[];
   suggestions: string[];
 }
 
 export interface ExtractionOptions {
+  /** @internal Name of the analyzed file, used to tell TypeScript from JavaScript. */
+  filename?: string;
   minComplexityPercentage?: number;
   /** Maximum percentage of complexity for a candidate (default: 70) - rejects whole-function suggestions */
   maxComplexityPercentage?: number;

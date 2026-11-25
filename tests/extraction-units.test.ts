@@ -177,7 +177,7 @@ describe('Extraction candidates are AST units (#175)', () => {
         expect(text).toContain('Inside a nested function');
         expect(text).toContain('Extractable with some refactoring');
         expect(text).not.toContain('Suggested:');
-        expect(text).not.toContain('minimal changes');
+        expect(text).not.toContain('No extraction hazards found');
       });
 
       it('treats a method of a module-level class as not nested', () => {
@@ -195,13 +195,19 @@ describe('Extraction candidates are AST units (#175)', () => {
       const text = suggestionText(REPRO_TOGGLE);
 
       expect(text).not.toContain('Lines 11-12');
-      expect(text).toContain('Lines 10-11: Extractable with minimal changes');
+      expect(text).toContain(
+        'Lines 10-11: No extraction hazards found, but check the types listed below'
+      );
       expect(text).toContain('Inputs: ids: string[], id: string, isPinned: boolean');
       expect(text).toContain('Outputs: isAlreadySelected');
+      // The output's type is inferred: the return type is left out rather than printed as `unknown`
       expect(text).toContain(
-        'Suggested: extracted(ids: string[], id: string, isPinned: boolean): unknown'
+        'Suggested: extracted(ids: string[], id: string, isPinned: boolean)\n'
       );
-      expect(text).toContain('Lines 12-12: Extractable with minimal changes');
+      expect(text).not.toContain('unknown');
+      expect(text).toContain(
+        'Lines 12-12: No extraction hazards found, but check the types listed below'
+      );
       expect(text).toContain('Inputs: ids: string[], id: string, isAlreadySelected');
       expect(text).toContain('Outputs: next');
     });
@@ -991,7 +997,6 @@ export function h4(a: boolean, items: number[], other: number[]) {
         inputs: [],
         outputs: [],
         mutations: [],
-        closures: [],
         hasEarlyReturn: false,
         hasThisReference: false,
         ...extra,

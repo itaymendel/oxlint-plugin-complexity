@@ -127,7 +127,7 @@ Detects common complexity patterns and provides actionable tips:
 
 ### Extraction Suggestions
 
-Suggests whole statements and blocks to extract (enabled by default, disable with `enableExtraction: false`). Blocks with a `return`, an escaping `break`/`continue`, `await`/`yield` or `this` get a concrete fix instead of a signature:
+Suggests whole statements and blocks to extract (enabled by default, disable with `enableExtraction: false`). Blocks with a `return`, an escaping `break`/`continue`, `await`/`yield` or `this` get a concrete fix instead of a signature. A signature is printed only when no hazard is found in applying it; otherwise the hazards are listed as issues:
 
 **Example output:**
 
@@ -147,7 +147,7 @@ Smart extraction suggestions:
     Suggestion: Consider returning 'totalCount' instead of mutating it
 ```
 
-**TypeScript support:** Preserves type annotations in suggested signatures:
+**TypeScript support:** Preserves type annotations in suggested signatures. A `Check types:` line names variables whose type is inferred or may be narrowed:
 
 ```
 Inputs: config: Config, results: number[]
@@ -159,11 +159,11 @@ Suggested: processBlock(config: Config, results: number[]): void
 Extraction suggestions use static analysis heuristics and may miss:
 
 - **Globals/module variables** (not tracked by variable flow analysis)
-- **Complex flows** (closures, dynamic properties, indirect mutations, `var` in loops)
+- **Complex flows** (dynamic properties, indirect mutations, getters and proxies)
 - **Enclosing variables** in nested functions: they aren't listed as inputs, so these blocks get no signature
 - **Runs of sibling statements**, one-line blocks, class field initializers, arrow expression bodies, and flat functions with many small increments
 
-Always review suggestions before applying, even when marked "high confidence".
+Always review suggestions before applying, even when marked "No extraction hazards found".
 
 ## Standalone Library Usage
 

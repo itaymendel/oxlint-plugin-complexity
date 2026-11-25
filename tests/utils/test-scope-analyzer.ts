@@ -69,6 +69,25 @@ interface MutableDefinition {
   parent: ESTreeNode | null;
 }
 
+const hasUseStrict = (statements: unknown): boolean =>
+  Array.isArray(statements) &&
+  statements.some((st) => (st as { directive?: string }).directive === 'use strict');
+
+/** Strict when in a class body, in a module, or under a `"use strict"` directive of any enclosing function or the program. */
+function isStrictAt(block: ESTreeNode): boolean {
+  for (let n: ESTreeNode | null | undefined = block; n; n = n.parent as ESTreeNode | undefined) {
+    const { body, sourceType } = n as unknown as {
+      body?: { body?: unknown } | unknown[];
+      sourceType?: string;
+    };
+    if (n.type === 'ClassBody' || sourceType === 'module') return true;
+    if (hasUseStrict(Array.isArray(body) ? body : (body as { body?: unknown } | undefined)?.body)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function createScope(
   type: Scope['type'],
   block: ESTreeNode,
@@ -76,7 +95,7 @@ function createScope(
 ): MutableScope {
   const scope: MutableScope = {
     type,
-    isStrict: false,
+    isStrict: isStrictAt(block),
     upper,
     childScopes: [],
     variableScope: null as unknown as MutableScope,
@@ -130,7 +149,19 @@ function createReference(
   };
 }
 
-function extractNames(pattern: ESTreeNode): IdentifierNode[] {
+/** Type-only bindings (type parameters, `type`, `interface`), as oxlint's scope manager reports them. */
+function defineTypeBinding(scope: MutableScope, id: IdentifierNode, node: ESTreeNode): void {
+  let variable = scope.set.get(id.name);
+  if (!variable) {
+    variable = createVariable(id.name, scope);
+    scope.variables.push(variable);
+    scope.set.set(id.name, variable);
+  }
+  variable.identifiers.push(id);
+  variable.defs.push({ type: 'Type' as Definition['type'], name: id, node, parent: null });
+}
+
+export function extractNames(pattern: ESTreeNode): IdentifierNode[] {
   const names: IdentifierNode[] = [];
 
   function traverse(node: ESTreeNode): void {
@@ -268,6 +299,20 @@ function shouldSkipIdentifier(node: ESTreeNode): boolean {
     }
   }
 
+  // Skip the names of type declarations and type parameters (definitions, not references)
+  if (
+    (parent.type === 'TSTypeAliasDeclaration' || parent.type === 'TSInterfaceDeclaration') &&
+    (parent as ESTreeNode & { id: ESTreeNode }).id === node
+  ) {
+    return true;
+  }
+  if (
+    parent.type === 'TSTypeParameter' &&
+    (parent as ESTreeNode & { name: ESTreeNode }).name === node
+  ) {
+    return true;
+  }
+
   // Skip variable declarator ids (these are handled as definitions, not references)
   if (parent.type === 'VariableDeclarator') {
     const decl = parent as ESTreeNode & { id: ESTreeNode };
@@ -340,6 +385,13 @@ export function analyzeScope(ast: ESTreeNode): ScopeManager {
           currentScope?.childScopes.push(funcScope);
           currentScope = funcScope;
 
+          const typeParameters = (
+            esNode as ESTreeNode & { typeParameters?: { params: Array<{ name: IdentifierNode }> } }
+          ).typeParameters;
+          for (const typeParameter of typeParameters?.params ?? []) {
+            defineTypeBinding(currentScope, typeParameter.name, esNode);
+          }
+
           // Add parameters to function scope
           for (const param of funcNode.params) {
             const names = extractNames(param);
@@ -359,6 +411,13 @@ export function analyzeScope(ast: ESTreeNode): ScopeManager {
               });
             }
           }
+          break;
+        }
+
+        case 'TSTypeAliasDeclaration':
+        case 'TSInterfaceDeclaration': {
+          const id = (esNode as ESTreeNode & { id: IdentifierNode }).id;
+          if (currentScope) defineTypeBinding(currentScope, id, esNode);
           break;
         }
 
