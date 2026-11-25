@@ -69,11 +69,13 @@ function narrowsAfter(ref: Reference): boolean {
 
 /** A declared union type may be narrowed by an initializer or by anything that ran before the block. */
 function mayBeNarrowed({ variable, info }: Binding, blockStart: number): boolean {
-  const type = annotationTypeNode(variable.identifiers[0] as unknown as ESTreeNode);
+  const identifier = variable.identifiers[0] as unknown as ESTreeNode;
+  const type = annotationTypeNode(identifier);
   return (
     info.typeAnnotation !== undefined &&
     !!type &&
-    couldNarrow(type) &&
+    // `x?: string` is a union with undefined
+    (couldNarrow(type) || getNodeProp(identifier, 'optional') === true) &&
     variable.references.some(
       (ref) =>
         ref.init ||

@@ -185,6 +185,25 @@ describe('results and type notes', () => {
     expect(`${clean}${noted}`).not.toContain('Extractable with minimal changes');
   });
 
+  it('notes an optional parameter that a guard may have narrowed', () => {
+    const code = `export function f(a: boolean, b: boolean, xs: number[], x?: string): void {
+  if (!x) return;
+  if (a && b) {
+    for (const n of xs) {
+      if (n || a) { use(x, n); }
+    }
+  }
+}
+`;
+    const notes = (source: string) =>
+      analyze(source, 'f.ts', OPTIONS)
+        .flatMap((r) => r.suggestions)
+        .flatMap((s) => s.typeNotes ?? [])
+        .join();
+    expect(notes(code)).toContain('x (may be narrowed)');
+    expect(notes(code.replace('x?:', 'x:'))).not.toContain('may be narrowed');
+  });
+
   it('never prints notes without a signature, and never lets them lower confidence', () => {
     const base = signed(suggestParams('', 'x: number', 'x'));
     expect(base.confidence).toBe('high');
@@ -192,7 +211,8 @@ describe('results and type notes', () => {
     expect(withNote.typeNotes).toBeDefined();
     expect(withNote.confidence).toBe(base.confidence);
     expect(withNote.issues).toEqual([]);
-    const withheld = suggestParams('', 'x = 1', 'x, later').find((s) => !s.suggestedSignature);
+    const withheld = suggestParams('', 'x = 1', 'x, this').find((s) => !s.suggestedSignature);
+    expect(withheld).toBeDefined();
     expect(withheld?.typeNotes).toBeUndefined();
   });
 
